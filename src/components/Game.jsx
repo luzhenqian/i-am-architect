@@ -18,8 +18,8 @@ const Game = ({ onBack }) => {
     const config = {
       type: Phaser.AUTO,
       parent: 'game-container',
-      width: window.innerWidth,
-      height: window.innerHeight,
+      width: window.innerWidth * window.devicePixelRatio,
+      height: window.innerHeight * window.devicePixelRatio,
       backgroundColor: '#1a1a1a',
       scene: CustomGameScene,
       physics: {
