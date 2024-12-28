@@ -6,10 +6,10 @@ export default class GameScene extends Phaser.Scene {
   constructor() {
     super('GameScene');
     this.config = new GameConfig();
-    this.gridSize = { rows: 8, cols: 6 };
+    this.gridSize = this.config.gridSize;
     this.cellSize = this.config.cellSize;
-    this.gold = 1000;
-    this.playerHealth = 100;
+    this.gold = this.config.initialGold;
+    this.playerHealth = this.config.initialHealth;
     this.towers = [];
     this.monsters = [];
     this.wave = 1;
@@ -668,12 +668,16 @@ export default class GameScene extends Phaser.Scene {
     const tower = this.towerTypes.find(t => t.key === towerType);
     if (!tower || this.gold < tower.cost) return;
 
+    // 标记格子为已占用
+    this.grid[row][col].occupied = true;
+    
     const x = this.grid[row][col].x;
     const y = this.grid[row][col].y;
 
     // 创建防御塔
     const towerSprite = this.add.image(x, y, towerType)
-      .setDisplaySize(this.cellSize * 0.8, this.cellSize * 0.8);
+      .setDisplaySize(this.cellSize * 0.8, this.cellSize * 0.8)
+      .setInteractive({ draggable: true }); // 设置为可交互和可拖拽
 
     // 创建血条
     const healthBar = this.createHealthBar(
@@ -704,29 +708,78 @@ export default class GameScene extends Phaser.Scene {
 
     // 将每秒攻击次数转换为毫秒间隔
     const towerConfig = this.config.towerTypes.find(t => t.key === towerType);
-    newTower.attackInterval = Math.floor(1000 / towerConfig.attackSpeed); // 转换为毫秒
+    newTower.attackInterval = Math.floor(1000 / towerConfig.attackSpeed);
 
     this.towers.push(newTower);
 
-    // 创建范围指示器
-    const rangeIndicator = this.add.graphics();
-    rangeIndicator.lineStyle(2, 0x6a0dad);
-    rangeIndicator.fillStyle(0x9370db, 0.1);
-    rangeIndicator.beginPath();
-    rangeIndicator.arc(x, y, tower.range * this.cellSize, 0, Math.PI * 2);
-    rangeIndicator.closePath();
-    rangeIndicator.fillPath();
-    rangeIndicator.strokePath();
-    rangeIndicator.setVisible(false);
+    // 设置拖拽事件
+    towerSprite.on('dragstart', () => {
+      console.log('Tower drag started'); // 调试日志
+      this.deleteZone.setVisible(true);
+      this.scrollPanel.setVisible(false);
+      towerSprite.originalPosition = { x: towerSprite.x, y: towerSprite.y };
+    });
 
-    // 添加鼠标悬停效果
-    towerSprite.setInteractive();
-    towerSprite.on('pointerover', () => {
-      rangeIndicator.setVisible(true);
+    towerSprite.on('drag', (pointer, dragX, dragY) => {
+      towerSprite.x = dragX;
+      towerSprite.y = dragY;
+      this.updateTowerHealthBarPosition(newTower);
     });
-    towerSprite.on('pointerout', () => {
-      rangeIndicator.setVisible(false);
+
+    towerSprite.on('dragend', (pointer) => {
+      console.log('Tower drag ended'); // 调试日志
+      const panelHeight = scaleToDPR(160);
+      if (pointer.y > this.game.config.height - panelHeight) {
+        // 播放删除动画
+        this.tweens.add({
+          targets: [towerSprite, newTower.healthBar.background, newTower.healthBar.bar],
+          alpha: 0,
+          scale: 0.5,
+          duration: 200,
+          onComplete: () => {
+            // 清除网格占用状态
+            this.grid[row][col].occupied = false;
+            
+            // 恢复格子的原始颜色和边框
+            const cell = this.grid[row][col].cell;
+            cell.setFillStyle(0x333333);
+            cell.setStrokeStyle(scaleToDPR(1), 0x444444);
+            
+            // 从数组中移除防御塔
+            const index = this.towers.indexOf(newTower);
+            if (index > -1) {
+              this.towers.splice(index, 1);
+            }
+            // 销毁防御塔及其相关组件
+            towerSprite.destroy();
+            newTower.healthBar.background.destroy();
+            newTower.healthBar.bar.destroy();
+            // 返还一部分金币
+            const refund = Math.floor(tower.cost * 0.7);
+            this.gold += refund;
+            this.goldText.setText(`金币: ${this.gold}`);
+            // 显示返还金额
+            this.showRefundText(pointer.x, pointer.y, refund);
+          }
+        });
+      } else {
+        // 如果不在删除区域，返回原位
+        towerSprite.x = towerSprite.originalPosition.x;
+        towerSprite.y = towerSprite.originalPosition.y;
+        this.updateTowerHealthBarPosition(newTower);
+      }
+      
+      // 隐藏删除区域
+      this.deleteZone.setVisible(false);
+      // 显示原始面板
+      this.scrollPanel.setVisible(true);
     });
+
+    // 确保拖拽插件已启用
+    if (!this.input.draggable) {
+      this.input.dragDistanceThreshold = 0;
+      this.input.setDraggable(towerSprite);
+    }
 
     return newTower;
   }
@@ -878,7 +931,7 @@ export default class GameScene extends Phaser.Scene {
           this.towers.splice(index, 1);
         }
 
-        // 清除网格占用
+        // 清除网格占用状态
         this.grid[tower.row][tower.col].occupied = false;
       }
     });
@@ -1091,8 +1144,9 @@ export default class GameScene extends Phaser.Scene {
     const panelHeight = scaleToDPR(160);
     const panelY = this.game.config.height - panelHeight;
 
-    // 创建滚动面容器
+    // 创建滚动面板容器
     const scrollPanel = this.add.container(0, panelY);
+    this.scrollPanel = scrollPanel; // 保存为类属性以便其他方法访问
 
     // 添加底部面板背景
     const panelBg = this.add.rectangle(
@@ -1345,6 +1399,47 @@ export default class GameScene extends Phaser.Scene {
         }
       }
     });
+
+    // 创建删除区域容器
+    this.deleteZone = this.add.container(0, this.game.config.height - panelHeight);
+    this.deleteZone.setVisible(false);
+
+    // 创建红色背景
+    const deleteZoneBg = this.add.rectangle(
+      0,
+      0,
+      this.game.config.width,
+      panelHeight,
+      0xff4444,
+      0.8
+    ).setOrigin(0, 0);
+    this.deleteZone.add(deleteZoneBg);
+
+    // 创建删除图标
+    const iconSize = scaleToDPR(40);
+    const deleteIcon = this.add.graphics();
+    deleteIcon.lineStyle(scaleToDPR(4), 0xffffff);
+    // 绘制X形图标
+    deleteIcon.moveTo(-iconSize/2, -iconSize/2);
+    deleteIcon.lineTo(iconSize/2, iconSize/2);
+    deleteIcon.moveTo(iconSize/2, -iconSize/2);
+    deleteIcon.lineTo(-iconSize/2, iconSize/2);
+    deleteIcon.setPosition(this.game.config.width / 2, panelHeight / 2);
+    this.deleteZone.add(deleteIcon);
+
+    // 添加删除提示文本
+    const deleteText = this.add.text(
+      this.game.config.width / 2,
+      panelHeight / 2 + scaleToDPR(30),
+      '拖拽到此处删除',
+      {
+        fontSize: `${scaleToDPR(20)}px`,
+        fontFamily: 'Arial',
+        color: '#ffffff',
+        fontStyle: 'bold'
+      }
+    ).setOrigin(0.5);
+    this.deleteZone.add(deleteText);
   }
 
   screenToGrid(x, y) {
@@ -1366,7 +1461,7 @@ export default class GameScene extends Phaser.Scene {
       col >= 0 && col < this.gridSize.cols &&
       this.grid[row] &&
       this.grid[row][col] &&
-      !this.grid[row][col].occupied;
+      !this.grid[row][col].occupied;  // 检查格子是否已被占用
   }
 
   startCountdown() {
@@ -1498,13 +1593,18 @@ export default class GameScene extends Phaser.Scene {
   highlightValidCell(row, col) {
     this.clearHighlight();
 
-    // 检查坐标是否有
     if (row >= 0 && row < this.gridSize.rows &&
       col >= 0 && col < this.gridSize.cols) {
-      if (this.canPlaceTower(row, col)) {
-        this.grid[row][col].cell.setStrokeStyle(2, 0x00ff00);
+      const cell = this.grid[row][col];
+      if (cell.occupied) {
+        // 已占用格子显示红色
+        cell.cell.setStrokeStyle(scaleToDPR(2), 0xff0000);
+      } else if (this.canPlaceTower(row, col)) {
+        // 可放置格子显示绿色
+        cell.cell.setStrokeStyle(scaleToDPR(2), 0x00ff00);
       } else {
-        this.grid[row][col].cell.setStrokeStyle(2, 0xff0000);
+        // 其他无效位置显示红色
+        cell.cell.setStrokeStyle(scaleToDPR(2), 0xff0000);
       }
     }
   }
@@ -2397,5 +2497,25 @@ export default class GameScene extends Phaser.Scene {
       tower.currentEffect.particles?.destroy();
       tower.currentEffect = null;
     }
+  }
+
+  // 添加显示返还金币的方法
+  showRefundText(x, y, amount) {
+    const refundText = this.add.text(x, y, `返还: ${amount}`, {
+      fontSize: `${scaleToDPR(20)}px`,
+      fontFamily: 'Arial',
+      color: '#ffd700',
+      stroke: '#000000',
+      strokeThickness: scaleToDPR(2)
+    }).setOrigin(0.5);
+
+    this.tweens.add({
+      targets: refundText,
+      y: y - scaleToDPR(50),
+      alpha: 0,
+      duration: 1000,
+      ease: 'Power2',
+      onComplete: () => refundText.destroy()
+    });
   }
 } 
