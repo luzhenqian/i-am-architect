@@ -109,27 +109,25 @@ export default class GameScene extends Phaser.Scene {
     const buttonHeight = scaleToDPR(30);
     const buttonWidth = scaleToDPR(80);
 
-    // 暂停按钮
-    const pauseX = this.game.config.width - scaleToDPR(200);
-    const pauseButton = this.add.rectangle(pauseX, buttonY, buttonWidth, buttonHeight, 0x4CAF50)
-      .setInteractive();
+    // 只保留暂停按钮
+    const pauseButton = this.add.rectangle(
+      this.game.config.width - scaleToDPR(60),
+      scaleToDPR(30),
+      scaleToDPR(40),
+      scaleToDPR(40),
+      0x4CAF50
+    ).setInteractive();
 
-    this.pauseText = this.add.text(pauseX, buttonY, '暂停', {
-      fontSize: `${scaleToDPR(16)}px`,
-      fontFamily: 'Arial',
-      color: '#ffffff'
-    }).setOrigin(0.5);
-
-    // 退出按钮
-    const exitX = this.game.config.width - scaleToDPR(100);
-    const exitButton = this.add.rectangle(exitX, buttonY, buttonWidth, buttonHeight, 0xff4444)
-      .setInteractive();
-
-    const exitText = this.add.text(exitX, buttonY, '退出', {
-      fontSize: `${scaleToDPR(16)}px`,
-      fontFamily: 'Arial',
-      color: '#ffffff'
-    }).setOrigin(0.5);
+    this.pauseText = this.add.text(
+      this.game.config.width - scaleToDPR(60),
+      scaleToDPR(30),
+      '暂停',
+      {
+        fontSize: `${scaleToDPR(14)}px`,
+        fontFamily: 'Arial',
+        color: '#ffffff'
+      }
+    ).setOrigin(0.5);
 
     // 暂停按钮交互
     pauseButton.on('pointerover', () => {
@@ -143,22 +141,12 @@ export default class GameScene extends Phaser.Scene {
     });
 
     pauseButton.on('pointerdown', () => {
-      this.togglePause();
+      this.showPauseDialog();
     });
 
-    // 退出按钮交互
-    exitButton.on('pointerover', () => {
-      exitButton.setFillStyle(0xe03939);
-      this.input.setDefaultCursor('pointer');
-    });
-
-    exitButton.on('pointerout', () => {
-      exitButton.setFillStyle(0xff4444);
-      this.input.setDefaultCursor('default');
-    });
-
-    exitButton.on('pointerdown', () => {
-      this.showExitConfirmation();
+    // 添加键盘ESC键暂停/继续功能
+    this.input.keyboard.on('keydown-ESC', () => {
+      this.showPauseDialog();
     });
 
     // 创建暂停菜单
@@ -166,18 +154,6 @@ export default class GameScene extends Phaser.Scene {
 
     // 创建退出确认对话框
     this.createExitConfirm();
-
-    // 添加键盘ESC键暂停/继续功能
-    this.input.keyboard.on('keydown-ESC', () => {
-      if (this.exitConfirm.visible) {
-        this.exitConfirm.setVisible(false);
-        if (!this.pauseMenu.visible) {
-          this.scene.resume();
-        }
-      } else {
-        this.togglePause();
-      }
-    });
 
     // 确保暂停菜单和退出确认框在场景暂停时仍然可以交互
     this.pauseMenu.setDepth(2000);
@@ -3081,7 +3057,7 @@ export default class GameScene extends Phaser.Scene {
       this.waveTimer.destroy();
     }
 
-    // 清理动画
+    // 清理��画
     this.tweens.killAll();
 
     // 移盘事件监听
@@ -3759,5 +3735,203 @@ export default class GameScene extends Phaser.Scene {
         source: new Phaser.Geom.Rectangle(-50, -10, 100, 20)
       }
     });
+  }
+
+  // 新增暂停对话框方法，复用游戏结束对话框的样式
+  showPauseDialog() {
+    // 先创建UI元素，再暂停场景
+    const width = this.game.config.width;
+    const height = this.game.config.height;
+
+    // 创建一个新的场景来显示暂停菜单
+    if (!this.scene.get('PauseScene')) {
+      class PauseScene extends Phaser.Scene {
+        constructor() {
+          super({ key: 'PauseScene' });
+        }
+
+        create() {
+          // 创建模糊背景
+          const overlay = this.add.rectangle(0, 0, width, height, 0x000000, 0.7)
+            .setOrigin(0)
+            .setDepth(100);
+
+          // 对话框尺寸和位置
+          const dialogWidth = Math.min(width * 0.8, scaleToDPR(500));
+          const dialogHeight = Math.min(height * 0.5, scaleToDPR(300));
+          const dialogX = width/2;
+          const dialogY = height/2;
+
+          // 创建对话框背景 - 主背景
+          const dialogBg = this.add.rectangle(dialogX, dialogY, dialogWidth, dialogHeight, 0x1a1a1a)
+            .setDepth(101);
+          
+          // 内层背景
+          const innerBg = this.add.rectangle(dialogX, dialogY, dialogWidth - scaleToDPR(4), dialogHeight - scaleToDPR(4), 0x2a2a2a)
+            .setDepth(101);
+
+          // 添加渐变边框
+          const border = this.add.graphics()
+            .setDepth(101);
+          
+          // 创建渐变边框效果
+          const gradientWidth = scaleToDPR(2);
+          const colors = [0x4488ff, 0x44aaff, 0x44ddff];
+          const borderAlpha = 0.8;
+          
+          let colorIndex = 0;
+          this.borderTimer = this.time.addEvent({
+            delay: 1000,
+            loop: true,
+            callback: () => {
+              border.clear();
+              const color = colors[colorIndex];
+              border.lineStyle(gradientWidth, color, borderAlpha);
+              border.strokeRect(
+                dialogX - dialogWidth/2,
+                dialogY - dialogHeight/2,
+                dialogWidth,
+                dialogHeight
+              );
+              colorIndex = (colorIndex + 1) % colors.length;
+            }
+          });
+
+          // 添加标题装饰线
+          const decorLine = this.add.graphics()
+            .setDepth(101);
+          decorLine.lineStyle(scaleToDPR(2), 0x4488ff, 0.8);
+          decorLine.lineBetween(
+            dialogX - dialogWidth * 0.3,
+            dialogY - dialogHeight * 0.15,
+            dialogX + dialogWidth * 0.3,
+            dialogY - dialogHeight * 0.15
+          );
+
+          // 暂停标题文本
+          const pauseTitle = this.add.text(dialogX, dialogY - dialogHeight * 0.25, 
+            '游戏暂停', {
+              fontSize: `${scaleToDPR(40)}px`,
+              fontFamily: 'Arial',
+              color: '#4488ff',
+              fontStyle: 'bold'
+            })
+            .setOrigin(0.5)
+            .setDepth(101);
+
+          // 添加文本发光效果
+          pauseTitle.setStroke('#0066ff', scaleToDPR(1));
+          this.tweens.add({
+            targets: pauseTitle,
+            alpha: 0.7,
+            yoyo: true,
+            repeat: -1,
+            duration: 1000,
+            ease: 'Sine.easeInOut'
+          });
+
+          // 创建按钮
+          const createButton = (x, text, color) => {
+            const buttonWidth = dialogWidth * 0.35;
+            const buttonHeight = scaleToDPR(40);
+            
+            const buttonBg = this.add.rectangle(x, 0, buttonWidth, buttonHeight, color, 0.8)
+              .setInteractive();
+            const buttonText = this.add.text(x, 0, text, {
+              fontSize: `${scaleToDPR(20)}px`,
+              fontFamily: 'Arial',
+              color: '#ffffff',
+              fontStyle: 'bold'
+            }).setOrigin(0.5);
+
+            const glow = this.add.rectangle(x, 0, buttonWidth + scaleToDPR(4), buttonHeight + scaleToDPR(4), color, 0.3);
+            
+            buttonBg.on('pointerover', () => {
+              this.tweens.add({
+                targets: [buttonBg, buttonText],
+                scaleX: 1.05,
+                scaleY: 1.05,
+                duration: 100
+              });
+              glow.setAlpha(0.5);
+            });
+            
+            buttonBg.on('pointerout', () => {
+              this.tweens.add({
+                targets: [buttonBg, buttonText],
+                scaleX: 1,
+                scaleY: 1,
+                duration: 100
+              });
+              glow.setAlpha(0.3);
+            });
+
+            return { bg: buttonBg, text: buttonText, glow };
+          };
+
+          // 创建按钮容器
+          const buttonContainer = this.add.container(dialogX, dialogY + dialogHeight * 0.15)
+            .setDepth(101);
+
+          const homeButton = createButton(-dialogWidth * 0.2, '返回首页', 0xff4444);
+          const continueButton = createButton(dialogWidth * 0.2, '继续游戏', 0x44aa44);
+
+          buttonContainer.add([
+            homeButton.glow, continueButton.glow,
+            homeButton.bg, continueButton.bg,
+            homeButton.text, continueButton.text
+          ]);
+
+          // 添加按钮点击事件
+          homeButton.bg.on('pointerdown', () => {
+            const gameScene = this.scene.get('GameScene');
+            if (gameScene) {
+              if (typeof gameScene.onBack === 'function') {
+                gameScene.onBack();
+              }
+              gameScene.scene.stop();
+              gameScene.scene.remove();
+              if (gameScene.game) {
+                gameScene.game.destroy(true);
+              }
+            }
+          });
+
+          continueButton.bg.on('pointerdown', () => {
+            const gameScene = this.scene.get('GameScene');
+            if (gameScene) {
+              gameScene.scene.resume();
+              if (gameScene.monsterSpawnEvent) {
+                gameScene.monsterSpawnEvent.paused = false;
+              }
+            }
+            this.scene.stop();
+          });
+
+          // 添加出现动画
+          const elements = [dialogBg, innerBg, pauseTitle, buttonContainer];
+          elements.forEach(element => {
+            element.alpha = 0;
+            element.y += scaleToDPR(50);
+            this.tweens.add({
+              targets: element,
+              alpha: 1,
+              y: element.y - scaleToDPR(50),
+              duration: 500,
+              ease: 'Back.easeOut'
+            });
+          });
+        }
+      }
+
+      this.scene.add('PauseScene', PauseScene, false);
+    }
+
+    // 启动暂停场景
+    this.scene.launch('PauseScene');
+    this.scene.pause();
+    if (this.monsterSpawnEvent) {
+      this.monsterSpawnEvent.paused = true;
+    }
   }
 } 
