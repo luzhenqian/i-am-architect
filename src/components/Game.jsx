@@ -11,7 +11,7 @@ const Game = ({ onBack }) => {
       // 使用 window.innerHeight 来获取实际可见高度
       const height = window.innerHeight * window.devicePixelRatio;
       const width = (window.visualViewport?.width || document.documentElement.clientWidth) * window.devicePixelRatio;
-      
+
       return { width, height };
     };
 
@@ -42,7 +42,11 @@ const Game = ({ onBack }) => {
           gravity: { y: 0 },
           debug: false
         }
-      }
+      },
+      scale: {
+        mode: Phaser.Scale.FIT,
+        autoCenter: Phaser.Scale.CENTER_BOTH
+      },
     };
 
     // 创建游戏实例
