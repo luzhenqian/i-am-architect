@@ -282,6 +282,11 @@ export default class GameScene extends Phaser.Scene {
 
     const towerType = this.towerTypes.find(t => t.key === tower.type);
     
+    // 检查是否是不应该攻击的防御塔类型
+    if (['code_sprite', 'blockchain_node', 'firewall'].includes(towerType.key)) {
+      return false;
+    }
+
     // 清理旧特效
     if (tower.currentEffect) {
       this.clearTowerEffects(tower);
@@ -290,68 +295,50 @@ export default class GameScene extends Phaser.Scene {
     // 创建新的攻击特效
     tower.currentEffect = this.createAttackEffect(tower, monster, tower.attackColor || 0x00ff00);
 
-    if (towerType.key === 'algo_cannon') {
-      // 算法炮台的范围伤害
-      const aoeRadius = this.cellSize * 1.5;
-      
-      // 找出范围内的所有怪物
-      this.monsters.forEach(targetMonster => {
-        if (targetMonster.isDying) return;
+    // 根据防御塔类型处理不同的攻击逻辑
+    switch (towerType.key) {
+      case 'algo_cannon':
+        // 算法炮台的范围伤害
+        const aoeRadius = this.cellSize * 1.5;
+        
+        // 找出范围内的所有怪物
+        this.monsters.forEach(targetMonster => {
+          if (targetMonster.isDying) return;
 
-        const distance = Phaser.Math.Distance.Between(
-          monster.sprite.x,
-          monster.sprite.y,
-          targetMonster.sprite.x,
-          targetMonster.sprite.y
-        );
-
-        // 如果在爆炸范围内
-        if (distance <= aoeRadius) {
-          // 计算伤害衰减（距离中心越远伤害越低）
-          const damageRatio = Math.max(0.5, 1 - (distance / aoeRadius));
-          // 确保基础伤害值存在
-          const baseDamage = tower.attack || towerType.attack || 15;
-          // 计算最终伤害
-          const damage = Math.max(1, Math.floor(baseDamage * damageRatio));
-          
-          console.log('AOE Damage:', {
-            baseDamage,
-            damageRatio,
-            finalDamage: damage,
-            monsterDefense: targetMonster.defense
-          });
-          
-          // 对范围内的怪物造成伤害
-          this.damageMonster(targetMonster, damage);
-
-          // 显示伤害数字
-          this.showDamageNumber(
+          const distance = Phaser.Math.Distance.Between(
+            monster.sprite.x,
+            monster.sprite.y,
             targetMonster.sprite.x,
-            targetMonster.sprite.y,
-            damage,
-            0xff4400
+            targetMonster.sprite.y
           );
-        }
-      });
 
-      // 显示范围指示器
-      this.showAOEIndicator(monster.sprite.x, monster.sprite.y, aoeRadius);
+          // 如果在爆炸范围内
+          if (distance <= aoeRadius) {
+            // 计算伤害衰减（距离中心越远伤害越低）
+            const damageRatio = Math.max(0.5, 1 - (distance / aoeRadius));
+            const baseDamage = tower.attack || towerType.attack || 15;
+            const damage = Math.max(1, Math.floor(baseDamage * damageRatio));
+            
+            this.damageMonster(targetMonster, damage);
+            this.showDamageNumber(
+              targetMonster.sprite.x,
+              targetMonster.sprite.y,
+              damage,
+              0xff4400
+            );
+          }
+        });
 
-      return true;
-    } else {
-      // 其他防御塔的单体伤害
-      // 确保使用正确的攻击力值
-      const baseDamage = tower.attack || towerType.attack || 10;
-      const monsterDefense = monster.defense || 0;
-      const damage = Math.max(1, Math.floor(baseDamage - monsterDefense));
-      
-      console.log('Single Target Damage:', {
-        baseDamage,
-        monsterDefense,
-        finalDamage: damage
-      });
+        this.showAOEIndicator(monster.sprite.x, monster.sprite.y, aoeRadius);
+        return true;
 
-      return this.damageMonster(monster, damage);
+      default:
+        // 其他防御塔的单体伤害
+        const defaultBaseDamage = tower.attack || towerType.attack || 10;
+        const defaultMonsterDefense = monster.defense || 0;
+        const defaultDamage = Math.max(1, Math.floor(defaultBaseDamage - defaultMonsterDefense));
+        
+        return this.damageMonster(monster, defaultDamage);
     }
   }
 
@@ -522,7 +509,7 @@ export default class GameScene extends Phaser.Scene {
       const shell = this.add.ellipse(startPos.x, startPos.y, scaleToDPR(12), scaleToDPR(8), 0x333333);
       shell.setStrokeStyle(scaleToDPR(1), 0x666666);
       
-      // 直线弹道动画
+      // 直线弹道动��
       this.tweens.add({
         targets: shell,
         x: endPos.x,
@@ -617,6 +604,117 @@ export default class GameScene extends Phaser.Scene {
       });
 
       return { shell };
+    } else if (towerType.key === 'code_warrior') {
+      // 代码战士的特殊攻击效果
+      const startPos = { x: tower.sprite.x, y: tower.sprite.y };
+      const endPos = { x: monster.sprite.x, y: monster.sprite.y };
+      
+      // 创建子弹
+      const bullet = this.add.container(startPos.x, startPos.y);
+      
+      // 子弹主体 - 蓝色能量弹
+      const bulletBody = this.add.ellipse(0, 0, scaleToDPR(12), scaleToDPR(6), 0x00ffff);
+      bulletBody.setAlpha(0.8);
+      
+      // 子弹尾迹
+      const bulletTrail = this.add.ellipse(0, 0, scaleToDPR(16), scaleToDPR(4), 0x0088ff);
+      bulletTrail.setAlpha(0.4);
+      
+      // 子弹光晕
+      const bulletGlow = this.add.ellipse(0, 0, scaleToDPR(20), scaleToDPR(8), 0x00ffff);
+      bulletGlow.setAlpha(0.2);
+      
+      bullet.add([bulletGlow, bulletTrail, bulletBody]);
+      
+      // 计算角度
+      const angle = Phaser.Math.Angle.Between(startPos.x, startPos.y, endPos.x, endPos.y);
+      bullet.setRotation(angle);
+      
+      // 创建发射闪光
+      const muzzleFlash = this.add.circle(startPos.x, startPos.y, scaleToDPR(10), 0x00ffff, 0.8);
+      
+      // 发射粒子效果
+      const particles = this.add.particles(startPos.x, startPos.y, 'particle', {
+        speed: { min: scaleToDPR(50), max: scaleToDPR(100) },
+        scale: { start: 0.4, end: 0 },
+        alpha: { start: 0.6, end: 0 },
+        tint: 0x00ffff,
+        blendMode: 'ADD',
+        lifespan: 200,
+        quantity: 8,
+        angle: {
+          min: Phaser.Math.RadToDeg(angle) - 15,
+          max: Phaser.Math.RadToDeg(angle) + 15
+        }
+      });
+
+      // 子弹飞行动画
+      this.tweens.add({
+        targets: bullet,
+        x: endPos.x,
+        y: endPos.y,
+        duration: 400,
+        ease: 'Cubic.easeOut',
+        onComplete: () => {
+          // 创建命中效果
+          const impact = this.add.circle(endPos.x, endPos.y, scaleToDPR(15), 0x00ffff, 0.8);
+          
+          // 命中粒子
+          const impactParticles = this.add.particles(endPos.x, endPos.y, 'particle', {
+            speed: { min: scaleToDPR(80), max: scaleToDPR(160) },
+            scale: { start: 0.4, end: 0 },
+            alpha: { start: 0.6, end: 0 },
+            tint: [0x00ffff, 0x0088ff],
+            blendMode: 'ADD',
+            lifespan: 300,
+            quantity: 12,
+            angle: { min: 0, max: 360 }
+          });
+          
+          // 命中波纹
+          const ring = this.add.circle(endPos.x, endPos.y, scaleToDPR(10), 0x00ffff, 0);
+          ring.setStrokeStyle(scaleToDPR(2), 0x00ffff, 1);
+          
+          // 命中效果动画
+          this.tweens.add({
+            targets: [impact, ring],
+            scale: 2,
+            alpha: 0,
+            duration: 300,
+            ease: 'Power2',
+            onComplete: () => {
+              impact.destroy();
+              ring.destroy();
+              impactParticles.destroy();
+            }
+          });
+          
+          // 清理子弹相关效果
+          bullet.destroy();
+          particles.destroy();
+        }
+      });
+
+      // 发射闪光动画
+      this.tweens.add({
+        targets: muzzleFlash,
+        scale: { from: 0.8, to: 1.5 },
+        alpha: { from: 0.8, to: 0 },
+        duration: 200,
+        ease: 'Power2',
+        onComplete: () => muzzleFlash.destroy()
+      });
+
+      // 子弹尾迹动画
+      this.tweens.add({
+        targets: bulletTrail,
+        scaleX: { from: 1, to: 1.5 },
+        alpha: { from: 0.4, to: 0 },
+        duration: 400,
+        ease: 'Power2'
+      });
+
+      return { bullet, particles };
     } else {
       // 其他防御塔的默认效果
       const line = this.add.graphics();
@@ -668,6 +766,9 @@ export default class GameScene extends Phaser.Scene {
     const tower = this.towerTypes.find(t => t.key === towerType);
     if (!tower || this.gold < tower.cost) return;
 
+    // 扣除金币
+    this.updateGold(this.gold - tower.cost);
+
     // 标记格子为已占用
     this.grid[row][col].occupied = true;
     
@@ -714,21 +815,47 @@ export default class GameScene extends Phaser.Scene {
 
     // 设置拖拽事件
     towerSprite.on('dragstart', () => {
-      console.log('Tower drag started'); // 调试日志
+      console.log('Tower drag started');
       this.deleteZone.setVisible(true);
       this.scrollPanel.setVisible(false);
       towerSprite.originalPosition = { x: towerSprite.x, y: towerSprite.y };
+
+      // 清除可能存在的旧预览
+      if (this.rangePreview) {
+        this.rangePreview.destroy();
+      }
+
+      // 只为有攻击范围的防御塔显示范围
+      if (!['blockchain_node', 'firewall'].includes(towerType)) {
+        this.rangePreview = this.add.graphics();
+        this.updateRangePreview(towerSprite.x, towerSprite.y, newTower.range);
+      }
     });
 
     towerSprite.on('drag', (pointer, dragX, dragY) => {
+      // 更新防御塔位置
       towerSprite.x = dragX;
       towerSprite.y = dragY;
+      
+      // 更新血条位置
       this.updateTowerHealthBarPosition(newTower);
+      
+      // 更新攻击范围预览位置
+      if (this.rangePreview) {
+        this.updateRangePreview(dragX, dragY, newTower.range);
+      }
     });
 
     towerSprite.on('dragend', (pointer) => {
-      console.log('Tower drag ended'); // 调试日志
+      console.log('Tower drag ended');
       const panelHeight = scaleToDPR(160);
+      
+      // 清除攻击范围预览
+      if (this.rangePreview) {
+        this.rangePreview.destroy();
+        this.rangePreview = null;
+      }
+
       if (pointer.y > this.game.config.height - panelHeight) {
         // 播放删除动画
         this.tweens.add({
@@ -750,20 +877,20 @@ export default class GameScene extends Phaser.Scene {
             if (index > -1) {
               this.towers.splice(index, 1);
             }
+            
             // 销毁防御塔及其相关组件
             towerSprite.destroy();
             newTower.healthBar.background.destroy();
             newTower.healthBar.bar.destroy();
+            
             // 返还一部分金币
             const refund = Math.floor(tower.cost * 0.7);
-            this.gold += refund;
-            this.goldText.setText(`金币: ${this.gold}`);
-            // 显示返还金额
+            this.updateGold(this.gold + refund);
             this.showRefundText(pointer.x, pointer.y, refund);
           }
         });
       } else {
-        // 如果不在删除区域，返回原位
+        // 返回原位
         towerSprite.x = towerSprite.originalPosition.x;
         towerSprite.y = towerSprite.originalPosition.y;
         this.updateTowerHealthBarPosition(newTower);
@@ -779,6 +906,35 @@ export default class GameScene extends Phaser.Scene {
     if (!this.input.draggable) {
       this.input.dragDistanceThreshold = 0;
       this.input.setDraggable(towerSprite);
+    }
+
+    if (towerType === 'blockchain_node') {
+      // 为区块链节点设置金币生成定时器
+      const goldGenerationEvent = this.time.addEvent({
+        delay: 5000, // 每5秒生成一次
+        callback: () => {
+          const goldAmount = 10; // 每次生成10金币
+          this.generateGold(newTower, goldAmount);
+        },
+        loop: true
+      });
+      
+      // 将定时器引用存储在塔的属性中，以便后续清理
+      newTower.goldGenerationEvent = goldGenerationEvent;
+    }
+
+    if (towerType === 'debug_fairy') {
+      // 为代码精灵设置治疗定时器
+      const healingEvent = this.time.addEvent({
+        delay: Math.floor(1000 / tower.attackSpeed), // 根据攻击速度设置间隔
+        callback: () => {
+          this.healNearbyTowers(newTower);
+        },
+        loop: true
+      });
+      
+      // 将定时器引用存储在塔的属性中，以便后续清理
+      newTower.healingEvent = healingEvent;
     }
 
     return newTower;
@@ -898,6 +1054,15 @@ export default class GameScene extends Phaser.Scene {
 
   // 防御塔摧毁效果
   destroyTower(tower) {
+    // 如果是代码精灵，清理治疗定时器
+    if (tower.type === 'debug_fairy' && tower.healingEvent) {
+      tower.healingEvent.destroy();
+    }
+    // 如果是区块链节点，清理金币生成定时器
+    if (tower.type === 'blockchain_node' && tower.goldGenerationEvent) {
+      tower.goldGenerationEvent.destroy();
+    }
+
     // 创建爆炸效果
     const explosion = this.add.particles(0, 0, 'particle', {
       x: tower.sprite.x,
@@ -982,8 +1147,7 @@ export default class GameScene extends Phaser.Scene {
 
     monsterData.health -= damage;
     if (monsterData.health <= 0) {
-      this.gold += monsterData.reward || 10;
-      this.goldText.setText(`金: ${this.gold}`);
+      this.updateGold(this.gold + monsterData.reward);
       monster.destroy();
       this.monsters = this.monsters.filter(m => m.sprite !== monster);
     }
@@ -1264,27 +1428,34 @@ export default class GameScene extends Phaser.Scene {
       const towerContainer = this.add.container(x, y);
       towersContainer.add(towerContainer);
 
-      // 塔的卡片背景
-      const cardBg = this.add.rectangle(0, 0, scaleToDPR(110), scaleToDPR(120), 0x333333, 0.8)
-        .setStrokeStyle(scaleToDPR(1), 0x666666)
+      // 塔的卡片背景 - 根据金币数量设置初始颜色
+      const isAffordable = this.gold >= tower.cost;
+      const cardBg = this.add.rectangle(0, 0, scaleToDPR(110), scaleToDPR(120), 
+        isAffordable ? 0x333333 : 0x222222, 
+        isAffordable ? 0.8 : 0.5
+      )
+        .setStrokeStyle(scaleToDPR(1), isAffordable ? 0x666666 : 0x444444)
         .setOrigin(0.5)
         .setInteractive();
       towerContainer.add(cardBg);
 
       // 塔的图标背景
-      const iconBg = this.add.circle(0, scaleToDPR(-30), scaleToDPR(32), 0x444444);
+      const iconBg = this.add.circle(0, scaleToDPR(-30), scaleToDPR(32), 
+        isAffordable ? 0x444444 : 0x333333
+      );
       towerContainer.add(iconBg);
 
-      // 塔的图标
+      // 塔的图标 - 根据金币数量设置透明度
       const towerIcon = this.add.image(0, scaleToDPR(-30), tower.key)
-        .setDisplaySize(scaleToDPR(50), scaleToDPR(50));
+        .setDisplaySize(scaleToDPR(50), scaleToDPR(50))
+        .setAlpha(isAffordable ? 1 : 0.5);
       towerContainer.add(towerIcon);
 
-      // 塔的名称
+      // 塔的名称 - 根据金币数量设置颜色
       const nameText = this.add.text(0, scaleToDPR(10), tower.name, {
         fontSize: `${scaleToDPR(16)}px`,
         fontFamily: 'Arial',
-        color: '#ffffff',
+        color: isAffordable ? '#ffffff' : '#888888',
         resolution: 2,
         fontStyle: 'bold'
       }).setOrigin(0.5, 0);
@@ -1294,22 +1465,46 @@ export default class GameScene extends Phaser.Scene {
       const costContainer = this.add.container(0, scaleToDPR(35));
       towerContainer.add(costContainer);
 
-      const coinIcon = this.add.circle(scaleToDPR(-28), 0, scaleToDPR(12), 0xffd700);
+      const coinIcon = this.add.circle(scaleToDPR(-28), 0, scaleToDPR(12), 0xffd700)
+        .setAlpha(isAffordable ? 1 : 0.5);
       costContainer.add(coinIcon);
 
       const costText = this.add.text(0, 0, tower.cost.toString(), {
         fontSize: `${scaleToDPR(20)}px`,
         fontFamily: 'Arial',
-        color: '#ffd700',
+        color: isAffordable ? '#ffd700' : '#997700',
         resolution: 2,
         fontStyle: 'bold'
       }).setOrigin(0, 0.5);
       costContainer.add(costText);
 
+      // 更新交互效果
+      cardBg.on('pointerover', () => {
+        if (isAffordable) {
+          cardBg.setFillStyle(0x444444, 0.8);
+        }
+      });
+
+      cardBg.on('pointerout', () => {
+        if (isAffordable) {
+          cardBg.setFillStyle(0x333333, 0.8);
+        }
+      });
+
+      // 将塔的组件保存为一个组，以便后续更新
+      tower.uiComponents = {
+        cardBg,
+        iconBg,
+        towerIcon,
+        nameText,
+        coinIcon,
+        costText
+      };
+
       // 设置拖拽
       this.input.setDraggable(cardBg);
 
-      // 添加互效果
+      // 加互效果
       cardBg.on('pointerover', () => {
         cardBg.setFillStyle(0x444444, 0.8);
       });
@@ -1327,14 +1522,17 @@ export default class GameScene extends Phaser.Scene {
       cardBg.on('dragstart', (pointer, dragX, dragY) => {
         if (isDragThresholdMet) return;
 
-        if (this.gold < tower.cost) {
+        // 检查金币是否足够
+        const towerConfig = this.towerTypes.find(t => t.key === tower.key);
+        if (this.gold < towerConfig.cost) {
           this.showInsufficientFundsHint(pointer.x, pointer.y);
-          return;
+          return false; // 阻止拖拽开始
         }
 
         isTowerDrag = true;
         isDragging = false;
 
+        // 创建拖拽时的塔预览
         this.dragTower = {
           type: tower.key,
           cost: tower.cost,
@@ -1344,35 +1542,47 @@ export default class GameScene extends Phaser.Scene {
             .setAlpha(0.8)
         };
 
-        this.createRangePreview(pointer.x, pointer.y, tower.range);
+        // 只为需要显示攻击范围的防御塔创建范围预览
+        if (!['blockchain_node', 'firewall'].includes(tower.key)) {
+          this.createRangePreview(pointer.x, pointer.y, tower.range, 0x9370db);
+        }
       });
 
       cardBg.on('drag', (pointer, dragX, dragY) => {
         if (!this.dragTower) return;
 
+        // 直接跟随鼠标/触摸位置
         this.dragTower.sprite.x = pointer.x;
         this.dragTower.sprite.y = pointer.y;
 
+        // 获取当前指针所在的网格位置
         const cellCoords = this.screenToGrid(pointer.x, pointer.y);
 
-        if (this.isValidGridPosition(cellCoords.row, cellCoords.col)) {
-          const centerX = this.grid[cellCoords.row][cellCoords.col].x;
-          const centerY = this.grid[cellCoords.row][cellCoords.col].y;
-          this.createRangePreview(centerX, centerY, this.dragTower.range);
+        // 只在指针位于有效网格内时显示网格提示
+        if (cellCoords) {
           this.highlightValidCell(cellCoords.row, cellCoords.col);
         } else {
-          this.createRangePreview(pointer.x, pointer.y, this.dragTower.range);
+          this.clearHighlight();
+        }
+        
+        // 范围预览始终跟随鼠标位置
+        if (this.rangePreview && !['blockchain_node', 'firewall'].includes(this.dragTower.type)) {
+          this.createRangePreview(pointer.x, pointer.y, this.dragTower.range, 0x9370db);
         }
       });
 
       cardBg.on('dragend', (pointer) => {
         if (!this.dragTower) return;
 
+        // 获取松开时的网格位置
         const cellCoords = this.screenToGrid(pointer.x, pointer.y);
-        if (this.canPlaceTower(cellCoords.row, cellCoords.col)) {
+        
+        // 只有在有效网格位置且可以放置时才放置防御塔
+        if (cellCoords && this.canPlaceTower(cellCoords.row, cellCoords.col)) {
           this.placeTower(cellCoords.row, cellCoords.col, this.dragTower.type);
         }
 
+        // 清理拖拽相关效果
         this.clearHighlight();
         if (this.rangePreview) {
           this.rangePreview.destroy();
@@ -1440,6 +1650,35 @@ export default class GameScene extends Phaser.Scene {
       }
     ).setOrigin(0.5);
     this.deleteZone.add(deleteText);
+
+    // 添加金币变化监听器，用于更新塔的显示状态
+    this.events.on('goldChanged', () => {
+      this.towerTypes.forEach(tower => {
+        if (tower.uiComponents) {
+          const isAffordable = this.gold >= tower.cost;
+          
+          // 更新卡片背景
+          tower.uiComponents.cardBg
+            .setFillStyle(isAffordable ? 0x333333 : 0x222222, isAffordable ? 0.8 : 0.5)
+            .setStrokeStyle(scaleToDPR(1), isAffordable ? 0x666666 : 0x444444);
+          
+          // 更新图标背景
+          tower.uiComponents.iconBg.setFillStyle(isAffordable ? 0x444444 : 0x333333);
+          
+          // 更新图标透明度
+          tower.uiComponents.towerIcon.setAlpha(isAffordable ? 1 : 0.5);
+          
+          // 更新名称颜色
+          tower.uiComponents.nameText.setColor(isAffordable ? '#ffffff' : '#888888');
+          
+          // 更新金币图标
+          tower.uiComponents.coinIcon.setAlpha(isAffordable ? 1 : 0.5);
+          
+          // 更新成本文本颜色
+          tower.uiComponents.costText.setColor(isAffordable ? '#ffd700' : '#997700');
+        }
+      });
+    });
   }
 
   screenToGrid(x, y) {
@@ -1449,11 +1688,13 @@ export default class GameScene extends Phaser.Scene {
     const col = Math.floor(relativeX / this.cellSize);
     const row = Math.floor(relativeY / this.cellSize);
 
-    // 确保返回的坐标在有效范围内
-    return {
-      row: Math.max(0, Math.min(row, this.gridSize.rows - 1)),
-      col: Math.max(0, Math.min(col, this.gridSize.cols - 1))
-    };
+    // 如果坐标在网格范围外，返回 null
+    if (row < 0 || row >= this.gridSize.rows || 
+        col < 0 || col >= this.gridSize.cols) {
+      return null;
+    }
+
+    return { row, col };
   }
 
   canPlaceTower(row, col) {
@@ -1645,23 +1886,23 @@ export default class GameScene extends Phaser.Scene {
   }
 
   // 添加���建范围预览的方法
-  createRangePreview(x, y, range) {
+  createRangePreview(x, y, range, color = 0x9370db) {
     // 如果已存在范围预览，先销毁它
     if (this.rangePreview) {
       this.rangePreview.destroy();
     }
 
-    // 计算范围圆形的半径格子数 * 格子大小
+    // 计算范围圆形的半径（格子数 * 格子大小）
     const radius = range * this.cellSize;
 
-    // 创建个图形对象
+    // 创建图形对象
     this.rangePreview = this.add.graphics();
 
-    // 设置紫色边框
-    this.rangePreview.lineStyle(2, 0x6a0dad);
+    // 设置边框颜色
+    this.rangePreview.lineStyle(2, color === 0x9370db ? 0x6a0dad : color);
 
-    // 设置半透明紫色填充
-    this.rangePreview.fillStyle(0x9370db, 0.3);
+    // 设置半透明填充
+    this.rangePreview.fillStyle(color, 0.3);
 
     // 绘制圆形
     this.rangePreview.beginPath();
@@ -1835,10 +2076,7 @@ export default class GameScene extends Phaser.Scene {
         monster.sprite.destroy();
 
         // 给予奖励
-        this.gold += monster.reward;
-        this.goldText.setText(`金币: ${this.gold}`);
-
-        // 显示奖励文本
+        this.updateGold(this.gold + monster.reward);
         this.showRewardText(monster.sprite.x, monster.sprite.y, monster.reward);
 
         // 从数组中移除怪物
@@ -1908,7 +2146,7 @@ export default class GameScene extends Phaser.Scene {
     }
   }
 
-  // 更新防御塔血条位置
+  // ��新防御塔血条位置
   updateTowerHealthBarPosition(tower) {
     if (tower.healthBar) {
       tower.healthBar.background.x = tower.sprite.x;
@@ -1919,81 +2157,148 @@ export default class GameScene extends Phaser.Scene {
   }
 
   // 添加调试精灵的治疗功能
-  healNearbyTowers(sourceTower, healAmount) {
+  healNearbyTowers(sourceTower) {
     const healRadius = sourceTower.range * this.cellSize;
+    let targetTower = null;
+    let lowestHealthPercentage = 1;
 
+    // ���找范围内血量百分比最低的防御塔（包括自己）
     this.towers.forEach(tower => {
-      if (tower.id !== sourceTower.id) { // 不治疗自己
-        const distance = Phaser.Math.Distance.Between(
-          sourceTower.sprite.x,
-          sourceTower.sprite.y,
-          tower.sprite.x,
-          tower.sprite.y
-        );
+      const distance = Phaser.Math.Distance.Between(
+        sourceTower.sprite.x,
+        sourceTower.sprite.y,
+        tower.sprite.x,
+        tower.sprite.y
+      );
 
-        if (distance <= healRadius) {
-          // 计算治疗量
-          const healing = healAmount;
-          tower.health = Math.min(tower.maxHealth, tower.health + healing);
-
-          // 更新血条
-          const healthPercentage = tower.health / tower.maxHealth;
-          this.updateHealthBar(tower.healthBar, healthPercentage);
-
-          // 显示治疗数字
-          this.showHealNumber(tower.sprite.x, tower.sprite.y, healing);
-
-          // 创建治疗特效
-          this.createHealEffect(sourceTower, tower);
+      if (distance <= healRadius) {
+        const healthPercentage = tower.health / tower.maxHealth;
+        if (healthPercentage < 1 && healthPercentage < lowestHealthPercentage) {
+          lowestHealthPercentage = healthPercentage;
+          targetTower = tower;
         }
       }
     });
-  }
 
-  // 显示治疗数字
-  showHealNumber(x, y, amount) {
-    const healText = this.add.text(x, y - 20, `+${amount}`, {
-      fontSize: '20px',
-      fontFamily: 'Arial',
-      color: '#00ff00',
-      stroke: '#000000',
-      strokeThickness: 2
-    }).setOrigin(0.5);
+    // 如果找到需要治疗的目标
+    if (targetTower) {
+      // 计算治疗量
+      const healing = sourceTower.attack || 10;
+      targetTower.health = Math.min(targetTower.maxHealth, targetTower.health + healing);
 
-    this.tweens.add({
-      targets: healText,
-      y: y - 50,
-      alpha: 0,
-      duration: 1000,
-      ease: 'Power2',
-      onComplete: () => healText.destroy()
-    });
+      // 更新血条
+      const healthPercentage = targetTower.health / targetTower.maxHealth;
+      this.updateHealthBar(targetTower.healthBar, healthPercentage);
+
+      // 显示治疗数字
+      this.showHealNumber(targetTower.sprite.x, targetTower.sprite.y, healing);
+
+      // 创建治疗特效
+      this.createHealEffect(sourceTower, targetTower);
+    }
   }
 
   // 创建治疗特效
   createHealEffect(sourceTower, targetTower) {
-    // 创建治疗光
+    // 定义治疗主色调
+    const healColor = 0x00ff88;
+    const healColorBright = 0x80ffaa;
+    
+    // 创建治疗光束
     const line = this.add.graphics();
-    line.lineStyle(2, 0x00ffff, 1);
+    
+    // 创建双层光束效果
+    line.lineStyle(scaleToDPR(4), healColor, 0.3); // 外层光束
+    line.beginPath();
+    line.moveTo(sourceTower.sprite.x, sourceTower.sprite.y);
+    line.lineTo(targetTower.sprite.x, targetTower.sprite.y);
+    line.strokePath();
+    
+    line.lineStyle(scaleToDPR(2), healColorBright, 0.7); // 内层光束
     line.beginPath();
     line.moveTo(sourceTower.sprite.x, sourceTower.sprite.y);
     line.lineTo(targetTower.sprite.x, targetTower.sprite.y);
     line.strokePath();
 
-    // 创建治疗粒子
-    const particles = this.add.particles(0, 0, 'particle', {
-      x: targetTower.sprite.x,
-      y: targetTower.sprite.y,
-      speed: { min: 30, max: 60 },
-      angle: { min: 0, max: 360 },
-      scale: { start: 0.5, end: 0 },
+    // 创建源点光环
+    const sourceGlow = this.add.circle(
+      sourceTower.sprite.x, 
+      sourceTower.sprite.y, 
+      scaleToDPR(15), 
+      healColor, 
+      0.5
+    );
+
+    // 创建目标点光环
+    const targetGlow = this.add.circle(
+      targetTower.sprite.x, 
+      targetTower.sprite.y, 
+      scaleToDPR(20), 
+      healColor, 
+      0.5
+    );
+
+    // 创建治疗粒子 - 沿光束路径
+    const dx = targetTower.sprite.x - sourceTower.sprite.x;
+    const dy = targetTower.sprite.y - sourceTower.sprite.y;
+    const angle = Math.atan2(dy, dx) * 180 / Math.PI;
+
+    const particles = this.add.particles(sourceTower.sprite.x, sourceTower.sprite.y, 'particle', {
+      speed: { min: scaleToDPR(150), max: scaleToDPR(200) },
+      angle: { min: angle - 5, max: angle + 5 },
+      scale: { start: 0.6, end: 0 },
       blendMode: 'ADD',
       lifespan: 500,
-      quantity: 8,
-      tint: 0x00ffff
+      quantity: 2,
+      tint: [healColor, healColorBright],
+      emitting: true
     });
 
-    // 动画效果
+    // 创建目标点治疗光环动画 - 使用 Graphics 代替 Circle
+    const healRing = this.add.graphics();
+    const initialRadius = scaleToDPR(10);
+    const targetRadius = scaleToDPR(30);
+    
+    // 创建扩散动画
+    let progress = 0;
+    const expandRing = this.time.addEvent({
+      delay: 16, // 约60fps
+      callback: () => {
+        progress += 0.05; // 控制动画速度
+        const currentRadius = Phaser.Math.Linear(initialRadius, targetRadius, progress);
+        const alpha = 1 - progress;
+
+        healRing.clear();
+        healRing.lineStyle(scaleToDPR(2), healColor, alpha);
+        healRing.strokeCircle(targetTower.sprite.x, targetTower.sprite.y, currentRadius);
+
+        if (progress >= 1) {
+          expandRing.destroy();
+          healRing.destroy();
+        }
+      },
+      repeat: 20 // 调整重复次数以匹配所需的动画持续时间
+    });
+
+    // 目标点光晕效果
+    this.tweens.add({
+      targets: targetGlow,
+      scale: 1.5,
+      alpha: 0,
+      duration: 600,
+      ease: 'Quad.out'
+    });
+
+    // 源点光晕效果
+    this.tweens.add({
+      targets: sourceGlow,
+      scale: 1.3,
+      alpha: 0,
+      duration: 400,
+      ease: 'Quad.out'
+    });
+
+    // 光束渐隐效果
     this.tweens.add({
       targets: line,
       alpha: 0,
@@ -2002,7 +2307,62 @@ export default class GameScene extends Phaser.Scene {
       onComplete: () => {
         line.destroy();
         particles.destroy();
+        sourceGlow.destroy();
+        targetGlow.destroy();
       }
+    });
+
+    // 在目标位置创建上升的治疗符号
+    const healSymbol = this.add.text(
+      targetTower.sprite.x,
+      targetTower.sprite.y,
+      '+',
+      {
+        fontSize: `${scaleToDPR(24)}px`,
+        fontFamily: 'Arial',
+        color: '#00ff88',
+        stroke: '#ffffff',
+        strokeThickness: scaleToDPR(1)
+      }
+    ).setOrigin(0.5);
+
+    // 治疗符号动画
+    this.tweens.add({
+      targets: healSymbol,
+      y: targetTower.sprite.y - scaleToDPR(30),
+      alpha: 0,
+      scale: 1.5,
+      duration: 1000,
+      ease: 'Quad.out',
+      onComplete: () => healSymbol.destroy()
+    });
+  }
+
+  // 更新显示治疗数字的方法
+  showHealNumber(x, y, amount) {
+    const healText = this.add.text(x, y - scaleToDPR(20), `+${amount}`, {
+      fontSize: `${scaleToDPR(20)}px`,
+      fontFamily: 'Arial',
+      color: '#00ff88',
+      stroke: '#003311',
+      strokeThickness: scaleToDPR(3),
+      shadow: {
+        offsetX: 1,
+        offsetY: 1,
+        color: '#003311',
+        blur: 3,
+        fill: true
+      }
+    }).setOrigin(0.5);
+
+    this.tweens.add({
+      targets: healText,
+      y: y - scaleToDPR(50),
+      alpha: 0,
+      scale: { from: 1, to: 1.2 },
+      duration: 1000,
+      ease: 'Quad.out',
+      onComplete: () => healText.destroy()
     });
   }
 
@@ -2010,13 +2370,13 @@ export default class GameScene extends Phaser.Scene {
   generateGold(tower, amount) {
     // 创建金币图标位置（在防御塔稍微上方）
     const coinX = tower.sprite.x;
-    const coinY = tower.sprite.y - 30;
+    const coinY = tower.sprite.y - scaleToDPR(30);
 
     // 创建金币图标
     const coinIcon = this.add.circle(
       coinX,
       coinY,
-      12,
+      scaleToDPR(12),
       0xffd700
     );
 
@@ -2026,7 +2386,7 @@ export default class GameScene extends Phaser.Scene {
       coinY,
       '₿',
       {
-        fontSize: '16px',
+        fontSize: `${scaleToDPR(16)}px`,
         fontFamily: 'Arial',
         color: '#000000'
       }
@@ -2034,47 +2394,48 @@ export default class GameScene extends Phaser.Scene {
 
     // 创建金币数量文本
     const amountText = this.add.text(
-      coinX + 20,
+      coinX + scaleToDPR(20),
       coinY,
       `+${amount}`,
       {
-        fontSize: '16px',
+        fontSize: `${scaleToDPR(16)}px`,
         fontFamily: 'Arial',
         color: '#ffd700',
         stroke: '#000000',
-        strokeThickness: 2
+        strokeThickness: scaleToDPR(2)
       }
     ).setOrigin(0, 0.5);
 
-    // 简单的淡出动画
+    // 创建粒子效果
+    const particles = this.add.particles(coinX, coinY, 'particle', {
+      speed: { min: scaleToDPR(50), max: scaleToDPR(100) },
+      scale: { start: 0.4, end: 0 },
+      alpha: { start: 0.6, end: 0 },
+      tint: 0xffd700,
+      blendMode: 'ADD',
+      lifespan: 500,
+      quantity: 5,
+      angle: { min: -30, max: 30 }
+    });
+
+    // 金币上升动画
     this.tweens.add({
       targets: [coinIcon, coinSymbol, amountText],
-      alpha: 0,
-      y: coinY - 20,
+      y: coinY - scaleToDPR(40),
+      alpha: { from: 1, to: 0 },
       duration: 1000,
       ease: 'Power2',
       onComplete: () => {
         coinIcon.destroy();
         coinSymbol.destroy();
         amountText.destroy();
+        particles.destroy();
       }
     });
 
-    // 立即更金币数量
-    this.gold += amount;
-    this.goldText.setText(`金币: ${this.gold}`);
-
-    // 简单的闪光效果
-    const flash = this.add.circle(tower.sprite.x, tower.sprite.y, 25, 0xffd700, 0.3);
-    this.tweens.add({
-      targets: flash,
-      alpha: 0,
-      scale: 1.2,
-      duration: 500,
-      onComplete: () => flash.destroy()
-    });
-
-    // 添加金币数字跳动效果
+    // 更新金币数量并添加跳动效果
+    this.updateGold(this.gold + amount);
+    
     this.tweens.add({
       targets: this.goldText,
       scale: 1.2,
@@ -2085,9 +2446,26 @@ export default class GameScene extends Phaser.Scene {
         this.goldText.setScale(1);
       }
     });
+
+    // 添加闪光效果
+    const flash = this.add.circle(
+      tower.sprite.x,
+      tower.sprite.y,
+      scaleToDPR(25),
+      0xffd700,
+      0.3
+    );
+    
+    this.tweens.add({
+      targets: flash,
+      alpha: 0,
+      scale: 1.2,
+      duration: 500,
+      onComplete: () => flash.destroy()
+    });
   }
 
-  // 添加查找目标的函数
+  // 添加���找目标的函数
   findTarget(tower) {
     const towerType = this.towerTypes.find(t => t.key === tower.type);
     const range = towerType.range * this.cellSize;
@@ -2320,7 +2698,7 @@ export default class GameScene extends Phaser.Scene {
       cancelGroup
     ]);
 
-    // 确保整个对话框区域可以接收输入
+    // 确���整个对话框区域可以接收输入
     exitBg.setInteractive();
 
     // 添加到场景
@@ -2341,7 +2719,7 @@ export default class GameScene extends Phaser.Scene {
 
   // 添加场景恢复方法
   resume() {
-    // 确保所有UI元素状态正确
+    // 确保所有UI元素状��正确
     this.pauseMenu.setVisible(false);
     this.exitConfirm.setVisible(false);
     this.pauseText.setText('暂停');
@@ -2381,6 +2759,11 @@ export default class GameScene extends Phaser.Scene {
 
     const towerType = this.towerTypes.find(t => t.key === tower.type);
     
+    // 检查是否是不应该攻击的防御塔类型
+    if (['debug_fairy', 'blockchain_node', 'firewall'].includes(towerType.key)) {
+      return false;
+    }
+
     // 清理旧特效
     if (tower.currentEffect) {
       this.clearTowerEffects(tower);
@@ -2389,68 +2772,50 @@ export default class GameScene extends Phaser.Scene {
     // 创建新的攻击特效
     tower.currentEffect = this.createAttackEffect(tower, monster, tower.attackColor || 0x00ff00);
 
-    if (towerType.key === 'algo_cannon') {
-      // 算法炮台的范围伤害
-      const aoeRadius = this.cellSize * 1.5;
-      
-      // 找出范围内的所有怪物
-      this.monsters.forEach(targetMonster => {
-        if (targetMonster.isDying) return;
+    // 根据防御塔类型处理不同的攻击逻辑
+    switch (towerType.key) {
+      case 'algo_cannon':
+        // 算法炮台的范围伤害
+        const aoeRadius = this.cellSize * 1.5;
+        
+        // 找出范围内的所有怪物
+        this.monsters.forEach(targetMonster => {
+          if (targetMonster.isDying) return;
 
-        const distance = Phaser.Math.Distance.Between(
-          monster.sprite.x,
-          monster.sprite.y,
-          targetMonster.sprite.x,
-          targetMonster.sprite.y
-        );
-
-        // 如果在爆炸范围内
-        if (distance <= aoeRadius) {
-          // 计算伤害衰减（距离中心越远伤害越低）
-          const damageRatio = Math.max(0.5, 1 - (distance / aoeRadius));
-          // 确保基础伤害值存在
-          const baseDamage = tower.attack || towerType.attack || 15;
-          // 计算最终伤害
-          const damage = Math.max(1, Math.floor(baseDamage * damageRatio));
-          
-          console.log('AOE Damage:', {
-            baseDamage,
-            damageRatio,
-            finalDamage: damage,
-            monsterDefense: targetMonster.defense
-          });
-          
-          // 对范围内的怪物造成伤害
-          this.damageMonster(targetMonster, damage);
-
-          // 显示伤害数字
-          this.showDamageNumber(
+          const distance = Phaser.Math.Distance.Between(
+            monster.sprite.x,
+            monster.sprite.y,
             targetMonster.sprite.x,
-            targetMonster.sprite.y,
-            damage,
-            0xff4400
+            targetMonster.sprite.y
           );
-        }
-      });
 
-      // 显示范围指示器
-      this.showAOEIndicator(monster.sprite.x, monster.sprite.y, aoeRadius);
+          // 如果在爆炸范围内
+          if (distance <= aoeRadius) {
+            // 计算伤害衰减（��离中心越远伤害越低）
+            const damageRatio = Math.max(0.5, 1 - (distance / aoeRadius));
+            const baseDamage = tower.attack || towerType.attack || 15;
+            const damage = Math.max(1, Math.floor(baseDamage * damageRatio));
+            
+            this.damageMonster(targetMonster, damage);
+            this.showDamageNumber(
+              targetMonster.sprite.x,
+              targetMonster.sprite.y,
+              damage,
+              0xff4400
+            );
+          }
+        });
 
-      return true;
-    } else {
-      // 其他防御塔的单体伤害
-      // 确保使用正确的攻击力值
-      const baseDamage = tower.attack || towerType.attack || 10;
-      const monsterDefense = monster.defense || 0;
-      const damage = Math.max(1, Math.floor(baseDamage - monsterDefense));
-      
-      console.log('Single Target Damage:', {
-        baseDamage,
-        monsterDefense,
-        finalDamage: damage
-      });
+        this.showAOEIndicator(monster.sprite.x, monster.sprite.y, aoeRadius);
+        return true;
 
-      return this.damageMonster(monster, damage);
+      default:
+        // 其他防御塔的单体伤害
+        const defaultBaseDamage = tower.attack || towerType.attack || 10;
+        const defaultMonsterDefense = monster.defense || 0;
+        const defaultDamage = Math.max(1, Math.floor(defaultBaseDamage - defaultMonsterDefense));
+        
+        return this.damageMonster(monster, defaultDamage);
     }
   }
 
@@ -2517,5 +2882,68 @@ export default class GameScene extends Phaser.Scene {
       ease: 'Power2',
       onComplete: () => refundText.destroy()
     });
+  }
+
+  onTowerDragStart(tower, pointer) {
+    // 只有当塔有攻击范围时才显示
+    if (tower.towerType.attackType !== 'none' && tower.towerType.attackType !== 'mine') {
+      this.rangeCircle = this.add.circle(
+        tower.x,
+        tower.y,
+        tower.towerType.range * this.cellSize,
+        0x00ff00,
+        0.2
+      );
+    }
+    
+    this.children.bringToTop(tower);
+  }
+
+  onTowerDragEnd(tower, pointer) {
+    // 清除范围显示
+    if (this.rangeCircle) {
+      this.rangeCircle.destroy();
+      this.rangeCircle = null;
+    }
+    
+    // ... rest of the method ...
+  }
+
+  onTowerDrag(tower, pointer) {
+    tower.x = pointer.x;
+    tower.y = pointer.y;
+    
+    // 更新范围显示的位置
+    if (this.rangeCircle) {
+      this.rangeCircle.x = pointer.x;
+      this.rangeCircle.y = pointer.y;
+    }
+  }
+
+  // 添加新的方法来更新范围预览
+  updateRangePreview(x, y, range) {
+    if (!this.rangePreview) return;
+    
+    this.rangePreview.clear();
+    this.rangePreview.lineStyle(2, 0x9370db);
+    this.rangePreview.fillStyle(0x9370db, 0.3);
+    
+    // 计算范围圆形的半径（格子数 * 格子大小）
+    const radius = range * this.cellSize;
+    
+    // 绘制圆形
+    this.rangePreview.beginPath();
+    this.rangePreview.arc(x, y, radius, 0, Math.PI * 2);
+    this.rangePreview.closePath();
+    this.rangePreview.fillPath();
+    this.rangePreview.strokePath();
+  }
+
+  // 修改更新金币显示的方法
+  updateGold(amount) {
+    this.gold = amount;
+    this.goldText.setText(`金币: ${this.gold}`);
+    // 触发金币变化事件
+    this.events.emit('goldChanged');
   }
 } 
