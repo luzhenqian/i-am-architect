@@ -8,19 +8,11 @@ const Game = ({ onBack }) => {
   useEffect(() => {
     // 获取实际可见视口的大小
     const getViewportSize = () => {
-      // 使用 visualViewport API 获取实际可见区域大小
-      if (window.visualViewport) {
-        return {
-          width: window.visualViewport.width * window.devicePixelRatio,
-          height: window.visualViewport.height * window.devicePixelRatio
-        };
-      }
+      // 使用 window.innerHeight 来获取实际可见高度
+      const height = window.innerHeight * window.devicePixelRatio;
+      const width = (window.visualViewport?.width || document.documentElement.clientWidth) * window.devicePixelRatio;
       
-      // 回退方案：使用 clientWidth/clientHeight
-      return {
-        width: document.documentElement.clientWidth * window.devicePixelRatio,
-        height: document.documentElement.clientHeight * window.devicePixelRatio
-      };
+      return { width, height };
     };
 
     const viewport = getViewportSize();
