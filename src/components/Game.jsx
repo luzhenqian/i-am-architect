@@ -21,6 +21,9 @@ const Game = ({ onBack }) => {
     class CustomGameScene extends GameScene {
       constructor() {
         super();
+      }
+
+      init() {
         this.onBack = onBack;
       }
     }
