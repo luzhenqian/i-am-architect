@@ -397,10 +397,8 @@ export default class GameScene extends Phaser.Scene {
 
     // 检查并播放攻击音效
     const soundKey = `${tower.type}_attack`;
-    // 检查所有音效
-    console.log('检查所有音效', this.sound);
-    const a = this.sound.add(soundKey);
-    a.play({
+    const sound = this.sound.add(soundKey);
+    sound.play({
       volume: 0.1,
       rate: 1.0
     });
