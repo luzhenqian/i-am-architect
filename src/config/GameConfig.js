@@ -159,6 +159,7 @@ export class GameConfig {
         attackSpeed: 1000,
         attackRange: 1,
         reward: 25,
+        experience: 20,
         description: '在计算机那看不见硝烟的战场，病毒可是头号"大反派"。这个怪物宛如一颗数字世界的定时炸弹，所到之处，程序文件纷纷"缴械投降"，数据被腐蚀得千疮百孔，安全防线在它面前就像脆弱的纸糊栅栏。',
         skill: {
           name: '病毒感染',
@@ -181,7 +182,8 @@ export class GameConfig {
         attackSpeed: 800,
         attackRange: 1.5,
         reward: 30,
-        description: '想象一下，有个无形无体、来无影去无踪的家伙在程序的核心地带溜达，这就是黑客幽灵。它像是精通黑暗魔法的刺客，瞅准系统最脆弱的要害，冷不丁就狠狠刺上一刀，把程序搅得天翻地覆，让人防不胜防。',
+        experience: 25,
+        description: '想象一下，有个无形无体、来无影去无踪的家伙在程序的核心地带溜达，这就是黑客幽灵。它像是精通黑暗魔法的刺客，瞅准系统最脆弱的要害，冷不丁就狠狠刺上一刀，把程序搅得天翻���覆，让人防不胜防。',
         skill: {
           name: '系统入侵',
           description: '有概率绕过防御塔',
@@ -202,7 +204,8 @@ export class GameConfig {
         attackSpeed: 1200,
         attackRange: 1,
         reward: 35,
-        description: '内存泄露怪就像是程序里的"慢性毒药"。它悄无声息地潜伏着，一点一滴地漏掉宝贵的内存资源，一���始没啥感觉，等回过神来，程序已经被拖得气喘吁吁、摇摇欲坠，随时面临崩溃死机的厄运。',
+        experience: 30,
+        description: '内存泄露怪就像是程序里的"慢性毒药"。它悄无声息地潜伏着，一点一滴地漏掉宝贵的内存资源，一开始没啥感觉，等回过神来，程序已经被拖得气喘吁吁、摇摇欲坠，随时面临崩溃死机的厄运。',
         skill: {
           name: '内存消耗',
           description: '降低周围防御塔的攻击速度',
@@ -224,6 +227,7 @@ export class GameConfig {
         attackSpeed: 1500,
         attackRange: 1,
         reward: 45,
+        experience: 40,
         description: '木马恶魔可是伪装大师，表面人畜无害，扮成正常程序的模样，实则怀揣祸心。一旦被它蒙混过关，就会在系统内部大开杀戒，偷数据、搞破坏，把程序世界搅成混乱不堪的魔域。',
         skill: {
           name: '木马复制',
@@ -246,6 +250,7 @@ export class GameConfig {
         attackSpeed: 900,
         attackRange: 2,
         reward: 30,
+        experience: 35,
         description: '这只网络爬虫宛如盘踞在网络暗巷的"蜘蛛精"。它顺着网线，凭借对网络环境的熟稔，到处织网下套，抓取关键信息、篡改网页，把原本畅通无阻的网络世界，搅和得危机四伏。',
         skill: {
           name: '蛛网陷阱',
@@ -268,6 +273,7 @@ export class GameConfig {
         attackSpeed: 2000,
         attackRange: 3,
         reward: 50,
+        experience: 50,
         description: '01混乱巫师精通诡异的二进制魔法，只需挥动手中那闪烁着0和1光芒的魔杖，就能把有序的程序代码变成一锅乱炖，让数据错乱、指令失效，让程序陷入一片混沌迷雾。',
         skill: {
           name: '二进制混乱',
@@ -278,5 +284,30 @@ export class GameConfig {
         }
       }
     ];
+
+    this.levelExperience = {
+      1: 100,    // 1级升2级需要100经验
+      2: 200,    // 2级升3级需要200经验
+      3: 350,
+      4: 550,
+      5: 800,
+      6: 1100,
+      7: 1450,
+      8: 1850,
+      9: 2300,
+      10: 2800,
+      11: 3350,
+      12: 3950,
+      13: 4600,
+      14: 5300,
+      15: 6050,   // 15级升16级需要6050经验
+      // 15级之后每级所需经验增加800
+      getNextLevelExp: function(currentLevel) {
+        if (currentLevel <= 15) {
+          return this[currentLevel] || 100;
+        }
+        return this[15] + (currentLevel - 15) * 800;
+      }
+    };
   }
 } 
