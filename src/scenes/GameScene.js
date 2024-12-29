@@ -26,7 +26,7 @@ export default class GameScene extends Phaser.Scene {
     this.onBack = data?.onBack; // 保存回调函数
     this.level = 1;
     this.experience = 0;
-    this.nextLevelExp = 100;
+    this.nextLevelExp = this.config.levelExperience.getNextLevelExp(this.level);
   }
 
   init(data) {
@@ -76,11 +76,7 @@ export default class GameScene extends Phaser.Scene {
 
   create() {
     console.log('GameScene create started');
-    if (this.textures.exists('bg')) {
-      console.log('Background image loaded successfully');
-    } else {
-      console.log('Background image failed to load');
-    }
+
     // 添加背景图
     this.add.image(0, 0, 'bg')
       .setOrigin(0)
@@ -229,7 +225,7 @@ export default class GameScene extends Phaser.Scene {
     const levelStartX = scaleToDPR(20);
     const levelIcon = this.add.image(levelStartX, firstRowY, 'level')
       .setDisplaySize(scaleToDPR(48), scaleToDPR(48))
-      .setDepth(depth + 2);
+      .setDepth(depth + 5);
 
     // 等级文字添加黑色描边以增加可读性
     this.levelText = this.add.text(levelStartX, firstRowY, `${this.level || 1}`, {
@@ -239,7 +235,7 @@ export default class GameScene extends Phaser.Scene {
       fontStyle: 'bold',
       stroke: '#000000',      // 添加黑色描边
       strokeThickness: 2      // 设置描边宽度
-    }).setOrigin(0.5).setDepth(depth + 3);
+    }).setOrigin(0.5).setDepth(depth + 6);
 
     // 经验条背景
     const expBarX = levelStartX + scaleToDPR(0);
@@ -248,7 +244,7 @@ export default class GameScene extends Phaser.Scene {
       firstRowY,
       scaleToDPR(100),
       scaleToDPR(6),
-      0x444444,
+      0x333333,
       0.8 // 设置半透明
     ).setOrigin(0, 0.5).setDepth(depth + 1);
 
@@ -259,8 +255,8 @@ export default class GameScene extends Phaser.Scene {
       scaleToDPR(100) * ((this.experience || 0) / (this.nextLevelExp || 100)),
       scaleToDPR(6),
       0x00ff00,
-      0.9 // 略微半透明
-    ).setOrigin(0, 0.5).setDepth(depth);
+      1 // 略微半透明
+    ).setOrigin(0, 0.5).setDepth(depth + 2);
 
     // 中间: 金币
     const coinX = this.game.config.width / 2 - scaleToDPR(0);
@@ -2963,6 +2959,8 @@ export default class GameScene extends Phaser.Scene {
 
   // 在怪物受到伤害时更新血条
   damageMonster(monster, damage) {
+    if (!monster || monster.isDying) return false;
+
     // 确保damage是数字
     const damageAmount = Number(damage) || 0;
 
@@ -2979,10 +2977,131 @@ export default class GameScene extends Phaser.Scene {
 
     // 检查是否死亡
     if (monster.health <= 0 && !monster.isDying) {
+      monster.isDying = true;
+
+      // 获得经验值
+      const expGain = monster.experience || 10; // 默认经验值为10
+      this.addExperience(expGain);
+
+      // 显示获得的经验值
+      this.showExpGain(monster.sprite.x, monster.sprite.y, expGain);
+
       this.playDeathAnimation(monster);
       return true; // 返回true表示怪物已死亡
     }
     return false; // 返回false表示物存活
+  }
+
+  // 添加经验值方法
+  addExperience(amount) {
+    this.experience += amount;
+
+    // 检查是否升级
+    while (this.experience >= this.nextLevelExp) {
+      this.levelUp();
+    }
+
+    // 更新经验条
+    this.updateExpBar();
+  }
+
+  // 升级方法
+  levelUp() {
+    this.level += 1;
+    this.experience -= this.nextLevelExp;
+
+    // 计算下一级所需经验值
+    this.nextLevelExp = this.config.levelExperience.getNextLevelExp(this.level);
+
+    // 更新等级显示
+    this.levelText.setText(`${this.level}`);
+
+    // 播放升级特效
+    this.playLevelUpEffect();
+  }
+
+  // 更新经验条显示
+  updateExpBar() {
+    if (!this.expBar) return;
+
+    const progress = this.experience / this.nextLevelExp;
+    // 设置经验条的宽度
+    this.expBar.width = scaleToDPR(100) * progress;
+  }
+
+  // 显示获得经验值的文本
+  showExpGain(x, y, amount) {
+    const expText = this.add.text(x, y - scaleToDPR(40), `+${amount} EXP`, {
+      fontSize: `${scaleToDPR(16)}px`,
+      fontFamily: 'Arial',
+      color: '#44ff44',
+      stroke: '#000000',
+      strokeThickness: 2
+    }).setOrigin(0.5);
+
+    this.tweens.add({
+      targets: expText,
+      y: y - scaleToDPR(80),
+      alpha: 0,
+      duration: 1500,
+      ease: 'Power2',
+      onComplete: () => expText.destroy()
+    });
+  }
+
+  // 播放升级特效
+  playLevelUpEffect() {
+    // 创建升级文本
+    const levelUpText = this.add.text(
+      this.levelText.x,
+      this.levelText.y,
+      'LEVEL UP!',
+      {
+        fontSize: `${scaleToDPR(24)}px`,
+        fontFamily: 'Arial',
+        color: '#ffff44',
+        stroke: '#000000',
+        strokeThickness: 3
+      }
+    ).setOrigin(0.5);
+
+    // 创建发光效果
+    const glow = this.add.circle(
+      this.levelText.x,
+      this.levelText.y,
+      scaleToDPR(40),
+      0xffff44,
+      0.5
+    );
+
+    // 创建粒子效果
+    const particles = this.add.particles(
+      this.levelText.x,
+      this.levelText.y,
+      'particle',
+      {
+        speed: { min: scaleToDPR(100), max: scaleToDPR(200) },
+        scale: { start: 0.5, end: 0 },
+        alpha: { start: 1, end: 0 },
+        lifespan: 1000,
+        quantity: 20,
+        tint: 0xffff44
+      }
+    );
+
+    // 动画效果
+    this.tweens.add({
+      targets: [levelUpText, glow],
+      alpha: 0,
+      scale: 2,
+      duration: 1000,
+      ease: 'Power2',
+      onComplete: () => {
+        levelUpText.destroy();
+        glow.destroy();
+        particles.destroy();
+      }
+    });
   }
 
   // 显示伤害数字
