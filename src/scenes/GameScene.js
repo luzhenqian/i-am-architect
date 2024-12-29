@@ -72,10 +72,20 @@ export default class GameScene extends Phaser.Scene {
       // 加载防御塔摧毁音效
       this.load.audio(`${tower.key}_die`, `assets/effects/die/${tower.key}.wav`);
     });
+
+    // 加载背景乐
+    this.load.audio('bgm', `assets/music/bg.mp3`);
   }
 
   create() {
     console.log('GameScene create started');
+
+    // 在create方法开始处添加背景音乐播放
+    this.bgMusic = this.sound.add('bgm', {
+      volume: 0.3,
+      loop: true
+    });
+    this.bgMusic.play();
 
     // 添加背景图
     this.add.image(0, 0, 'bg')
