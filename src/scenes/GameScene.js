@@ -58,25 +58,40 @@ export default class GameScene extends Phaser.Scene {
     this.load.image('pause', 'assets/images/pause.png');
     // this.load.image('grid', 'assets/ui/grid.png');
     // this.load.image('tower_base', 'assets/ui/tower_base.png');
-    // 加载防御塔攻击音效
+    // 背景
+    this.load.image('bg', 'assets/images/bg.png');
     this.config.towerTypes.forEach(tower => {
       // 只为有攻击能力的防御塔加载音效
-      if (!['blockchain_node', 'firewall', 'debug_fairy'].includes(tower.key)) {
+      if (!['blockchain_node', 'firewall'].includes(tower.key)) {
         try {
           this.load.audio(`${tower.key}_attack`, `assets/effects/attack/${tower.key}.wav`);
         } catch (error) {
           console.warn(`Warning: Attack sound effect not found for tower: ${tower.key}`);
         }
       }
+      // 加载防御塔摧毁音效
+      this.load.audio(`${tower.key}_die`, `assets/effects/die/${tower.key}.wav`);
     });
   }
 
   create() {
     console.log('GameScene create started');
+    if (this.textures.exists('bg')) {
+      console.log('Background image loaded successfully');
+    } else {
+      console.log('Background image failed to load');
+    }
+    // 添加背景图
+    this.add.image(0, 0, 'bg')
+      .setOrigin(0)
+      .setDisplaySize(this.game.config.width, this.game.config.height)
+      .setDepth(-1)
+      .setAlpha(1); // 降低不透明度让背景不那么显眼
 
     // 创建游戏背景
     this.add.rectangle(0, 0, this.game.config.width, this.game.config.height, 0x1a1a1a)
-      .setOrigin(0, 0);
+      .setOrigin(0, 0)
+      .setDepth(-2);
 
     // 计算适配尺寸
     const { width, height } = this.calculateGameDimensions();
@@ -89,9 +104,6 @@ export default class GameScene extends Phaser.Scene {
 
     // 计算单个格子大小
     this.cellSize = width / this.gridSize.cols;
-
-    // 更新UI布局
-    this.updateUILayout();
 
     // 创建网格
     this.createGrid();
@@ -162,61 +174,6 @@ export default class GameScene extends Phaser.Scene {
     };
   }
 
-  // 更新UI布局
-  updateUILayout() {
-    // 顶部信息栏
-    const topBar = this.add.container(0, 0);
-    topBar.setDepth(1000);
-
-    // 背景
-    const topBarBg = this.add.rectangle(
-      0,
-      0,
-      this.game.config.width,
-      this.topBarHeight,
-      0x000000,
-      0.8
-    ).setOrigin(0);
-
-    // 生命值
-    this.healthText = this.add.text(
-      scaleToDPR(10),
-      this.topBarHeight / 2,
-      `生命: ${this.health}`,
-      {
-        fontSize: `${scaleToDPR(18)}px`,
-        color: '#ffffff'
-      }
-    ).setOrigin(0, 0.5);
-
-    // 金币
-    this.goldText = this.add.text(
-      this.game.config.width / 2,
-      this.topBarHeight / 2,
-      `金币: ${this.gold}`,
-      {
-        fontSize: `${scaleToDPR(18)}px`,
-        color: '#ffd700'
-      }
-    ).setOrigin(0.5);
-
-    // 波次
-    this.waveText = this.add.text(
-      this.game.config.width - scaleToDPR(10),
-      this.topBarHeight / 2,
-      `波次: ${this.wave}`,
-      {
-        fontSize: `${scaleToDPR(18)}px`,
-        color: '#ffffff'
-      }
-    ).setOrigin(1, 0.5);
-
-    topBar.add([topBarBg, this.healthText, this.goldText, this.waveText]);
-
-    // 底部控制面板
-    this.createBottomPanel();
-  }
-
   // 创建底部面板
   createBottomPanel() {
     const panelHeight = scaleToDPR(120);
@@ -233,65 +190,37 @@ export default class GameScene extends Phaser.Scene {
       this.game.config.width,
       panelHeight,
       0x000000,
-      0.8
+      0.8  // 设置半透明
     ).setOrigin(0);
   }
 
   update(time, delta) {
-    this.updateMonsters();
-    this.updateTowers(time, delta);
+    // 只在非拖拽状态下更新游戏逻辑
+    if (!this.isDragging) {
+      this.updateMonsters();
+      this.updateTowers(time, delta);
 
-    // 更新所有防御塔的血条位置
-    this.towers.forEach(tower => {
-      this.updateTowerHealthBarPosition(tower);
-    });
+      // 更新所有防御塔的血条位置
+      this.towers.forEach(tower => {
+        this.updateTowerHealthBarPosition(tower);
+      });
 
-    // 更新波次进���
-    this.updateWaveProgress();
+      // 更新波次进度
+      this.updateWaveProgress();
+    }
   }
 
   // 创建顶部信息栏背景
   createTopBar() {
     const topBarHeight = scaleToDPR(60);
-    const depth = 2000; // 增加深度值，确保显示在最上层
+    const depth = 2000;
 
-    // 创建顶部栏背景并设置深度
+    // 创建顶部栏背景并设置深度和半透明
     const topBar = this.add.rectangle(0, 0, this.game.config.width, topBarHeight, 0x333333)
       .setOrigin(0, 0)
-      .setAlpha(0.95) // 略微增加不透明度
-      .setDepth(depth)
-      .setScrollFactor(0); // 固定位置，不随场景滚动
-
-    // 创建分隔线并设置深度
-    const separator = this.add.graphics()
+      .setAlpha(0.1) // 降低不透明度
       .setDepth(depth)
       .setScrollFactor(0);
-    separator.lineStyle(scaleToDPR(2), 0x666666, 1);
-    separator.lineBetween(0, topBarHeight, this.game.config.width, topBarHeight);
-
-    // 更新所有顶部栏UI元素的深度和滚动因子
-    [this.levelText, this.expBar, this.goldText, this.waveText, this.waveProgressBar].forEach(element => {
-      if (element) {
-        element.setDepth(depth).setScrollFactor(0);
-      }
-    });
-
-    // 确保所有子元素也固定在顶部
-    const topBarElements = [
-      this.levelText,
-      this.expBar,
-      this.goldText,
-      this.waveText,
-      this.waveProgressBar,
-    ];
-
-    topBarElements.forEach(element => {
-      if (element) {
-        element
-          .setDepth(depth)
-          .setScrollFactor(0);
-      }
-    });
 
     // 第一行 Y 坐标
     const firstRowY = topBarHeight / 3;
@@ -302,44 +231,48 @@ export default class GameScene extends Phaser.Scene {
       .setDisplaySize(scaleToDPR(48), scaleToDPR(48))
       .setDepth(depth + 2);
 
-    // 等级文字放在图标正中心
+    // 等级文字改为白色以增加可读性
     this.levelText = this.add.text(levelStartX, firstRowY, `${this.level || 1}`, {
       fontSize: `${scaleToDPR(14)}px`,
       fontFamily: 'Arial',
-      color: '#000000',
+      color: '#ffffff', // 改为白色
       fontStyle: 'bold'
     }).setOrigin(0.5).setDepth(depth + 3);
 
-    // 经验条增加间距
+    // 经验条背景
     const expBarX = levelStartX + scaleToDPR(0);
     const expBarBg = this.add.rectangle(
       expBarX,
       firstRowY,
       scaleToDPR(100),
       scaleToDPR(6),
-      0x444444
-    ).setOrigin(0, 0.5)
-      .setDepth(depth + 1) // 降低层级
-    // .setRoundedRectangle(scaleToDPR(3)); // 添加圆角
+      0x444444,
+      0.8 // 设置半透明
+    ).setOrigin(0, 0.5).setDepth(depth + 1);
 
+    // 经验条
     this.expBar = this.add.rectangle(
       expBarX,
       firstRowY,
       scaleToDPR(100) * ((this.experience || 0) / (this.nextLevelExp || 100)),
       scaleToDPR(6),
-      0x00ff00
+      0x00ff00,
+      0.9 // 略微半透明
     ).setOrigin(0, 0.5).setDepth(depth);
 
     // 中间: 金币
     const coinX = this.game.config.width / 2 - scaleToDPR(50);
     const coinIcon = this.add.image(coinX, firstRowY, 'coin')
-      .setDisplaySize(scaleToDPR(40), scaleToDPR(40))
+      .setDisplaySize(scaleToDPR(34), scaleToDPR(34))
       .setDepth(depth);
 
+    // 增加金币文字的阴影以提高可读性
     this.goldText = this.add.text(coinX + scaleToDPR(20), firstRowY, `${this.gold}`, {
       fontSize: `${scaleToDPR(16)}px`,
       fontFamily: 'Arial',
-      color: '#ffd700'
+      color: '#ffd700',
+      stroke: '#000000', // 添加描边
+      strokeThickness: 2 // 描边宽度
     }).setOrigin(0, 0.5).setDepth(depth);
 
     // 右侧: 波次和进度条
@@ -347,16 +280,29 @@ export default class GameScene extends Phaser.Scene {
     this.waveText = this.add.text(waveX, firstRowY, `第 ${this.wave} 波`, {
       fontSize: `${scaleToDPR(14)}px`,
       fontFamily: 'Arial',
-      color: '#ffffff'
+      color: '#ffffff',
+      stroke: '#000000', // 添加描边
+      strokeThickness: 1 // 描边宽度
     }).setOrigin(0, 0.5).setDepth(depth);
 
-    // 波次进度条
+    // 波次进度条背景
     const waveProgressBg = this.add.rectangle(
       waveX + scaleToDPR(80),
       firstRowY,
       scaleToDPR(80),
       scaleToDPR(6),
-      0x444444
+      0x444444,
+      0.8 // 设置半透明
+    ).setOrigin(0, 0.5).setDepth(depth);
+
+    // 波次进度条
+    this.waveProgressBar = this.add.rectangle(
+      waveX + scaleToDPR(80),
+      firstRowY,
+      0,
+      scaleToDPR(6),
+      0x3498db,
+      0.9 // 略微半透明
     ).setOrigin(0, 0.5).setDepth(depth);
 
     this.waveProgressBar = this.add.rectangle(
@@ -1051,6 +997,20 @@ export default class GameScene extends Phaser.Scene {
       this.scrollPanel.setVisible(false);
       towerSprite.originalPosition = { x: towerSprite.x, y: towerSprite.y };
 
+      // 暂停游戏但保持UI交互
+      // 设置拖拽标志
+      this.isDragging = true;
+
+      // 暂停所有特殊防御塔的定时器
+      this.towers.forEach(tower => {
+        if (tower.healingEvent) {
+          tower.healingEvent.paused = true;
+        }
+        if (tower.goldGenerationEvent) {
+          tower.goldGenerationEvent.paused = true;
+        }
+      });
+
       // 清除可能存在的旧预览
       if (this.rangePreview) {
         this.rangePreview.destroy();
@@ -1079,7 +1039,31 @@ export default class GameScene extends Phaser.Scene {
 
     towerSprite.on('dragend', (pointer) => {
       console.log('Tower drag ended');
-      const panelHeight = scaleToDPR(160);
+      const panelHeight = scaleToDPR(120);
+
+      // 清除拖拽标志
+      this.isDragging = false;
+
+      // 恢复所有特殊防御塔的定时器
+      this.towers.forEach(tower => {
+        if (tower.healingEvent) {
+          tower.healingEvent.paused = false;
+        }
+        if (tower.goldGenerationEvent) {
+          tower.goldGenerationEvent.paused = false;
+        }
+      });
+
+      // 继续游戏
+      this.scene.resume('GameScene');
+
+      // 恢复正常深度
+      towerSprite.setDepth(0);
+      this.deleteZone.setDepth(0);
+      if (newTower.healthBar) {
+        newTower.healthBar.background.setDepth(0);
+        newTower.healthBar.bar.setDepth(0);
+      }
 
       // 清除攻击范围预览
       if (this.rangePreview) {
@@ -1184,7 +1168,19 @@ export default class GameScene extends Phaser.Scene {
       "代码像疯癫，工作全玩完！",
       "程序像魔仙，BUG在疯癫！",
       "逻辑太复杂，脑子要爆炸！",
-      "函数一飞，代码全稀碎！"
+      "函数一飞，代码全稀碎！",
+      "996，头顶光光，代码忙忙",
+      "加班累成狗，发量已远走",
+      "代码写得妙，加班没烦恼，可惜头发掉",
+      "都说程序员好，天天加班累成草",
+      "996的苦，秃了头来没法补",
+      "代码敲得欢，加班心发蔫",
+      "加班累成狗，头发掉成帚",
+      "头顶秃秃，代码咕咕，996真苦",
+      "程序员的日常，加班累断肠",
+      "代码写得勤，加班泪满襟",
+      "加班加成狗，头发掉成篓",
+      "996的生活，秃了头还得接着过"
     ];
 
     // 创建定时器来随机显示对话
@@ -1418,6 +1414,18 @@ export default class GameScene extends Phaser.Scene {
 
   // 防御塔摧毁效果
   destroyTower(tower) {
+    if (tower.isDestroying) {
+      return;
+    }
+    tower.isDestroying = true;
+    // 播放防御塔摧毁音效
+    const soundKey = `${tower.type}_die`;
+    const dieSound = this.sound.add(soundKey);
+    dieSound.play({
+      volume: 0.2,
+      rate: 1.0
+    });
+
     // 如果代码精灵，清理治疗定时器
     if (tower.type === 'debug_fairy' && tower.healingEvent) {
       tower.healingEvent.destroy();
@@ -1645,18 +1653,35 @@ export default class GameScene extends Phaser.Scene {
 
     // 创建传送门 (在网格上方)
     this.createPortals(offsetX, offsetY, gridWidth);
-
-    // 创建网格背景
-    this.add.rectangle(
+    // 创建网格区域的整体背景
+    const gridBg = this.add.rectangle(
       offsetX,
       this.gridOffset.y,
       gridWidth,
       gridHeight,
-      0x222222
-    ).setOrigin(0, 0);
+      0x000000
+    )
+      .setOrigin(0, 0)
+      .setAlpha(0.3);
 
-    // 创建机器核心 (在网格下方)
-    this.createMachineCores(offsetX, this.gridOffset.y + gridHeight, gridWidth);
+    // 添加战争迷雾效果
+    this.createFogOfWar(offsetX, this.gridOffset.y, gridWidth, gridHeight);
+
+    // 删除原有的绿色网格线，改用更柔和的颜色
+    const gridLines = this.add.graphics();
+    gridLines.lineStyle(1, 0x333333, 0.1); // 使用深灰色的网格线
+
+    // 绘制横向网格线
+    for (let row = 0; row <= this.gridSize.rows; row++) {
+      const y = this.gridOffset.y + row * this.cellSize;
+      gridLines.lineBetween(offsetX, y, offsetX + gridWidth, y);
+    }
+
+    // 绘制纵向网格线
+    for (let col = 0; col <= this.gridSize.cols; col++) {
+      const x = offsetX + col * this.cellSize;
+      gridLines.lineBetween(x, this.gridOffset.y, x, this.gridOffset.y + gridHeight);
+    }
 
     // 创建网格
     this.grid = [];
@@ -1666,40 +1691,258 @@ export default class GameScene extends Phaser.Scene {
         const x = this.gridOffset.x + col * this.cellSize;
         const y = this.gridOffset.y + row * this.cellSize;
 
-        // 创建单元格背景
+        // 创建单元格，使用更现代的样式
         const cell = this.add.rectangle(
           x,
           y,
           this.cellSize - scaleToDPR(2),
           this.cellSize - scaleToDPR(2),
-          0x333333
+          0x000000,
+          0 // 完全透明的背景
         )
           .setOrigin(0, 0)
-          .setStrokeStyle(scaleToDPR(1), 0x444444)
           .setInteractive();
+
+        // 创建单元格悬停效果
+        const hoverEffect = this.add.rectangle(
+          x,
+          y,
+          this.cellSize - scaleToDPR(2),
+          this.cellSize - scaleToDPR(2),
+          0x00ff00,
+          0
+        )
+          .setOrigin(0, 0);
 
         // 存储单元格信息
         this.grid[row][col] = {
           cell,
+          hoverEffect,
           x: x + this.cellSize / 2,
           y: y + this.cellSize / 2,
           occupied: false
         };
 
-        // 添加单元格交互
+        // 添加单元格交互效果
         cell.on('pointerover', () => {
           if (!this.grid[row][col].occupied) {
-            cell.setFillStyle(0x444444);
+            // 创建悬停动画
+            this.tweens.add({
+              targets: hoverEffect,
+              alpha: 0.2,
+              duration: 200,
+              ease: 'Power2'
+            });
           }
         });
 
         cell.on('pointerout', () => {
           if (!this.grid[row][col].occupied) {
-            cell.setFillStyle(0x333333);
+            // 创建悬停消失动画
+            this.tweens.add({
+              targets: hoverEffect,
+              alpha: 0,
+              duration: 200,
+              ease: 'Power2'
+            });
           }
         });
+
+        // 添加脉动效果（随机时间）
+        if (Math.random() < 0.3) { // 30%的格子会有脉动效果
+          const pulse = this.add.rectangle(
+            x + this.cellSize / 2,
+            y + this.cellSize / 2,
+            this.cellSize * 0.8,
+            this.cellSize * 0.8,
+            0x00ff00,
+            0.1
+          )
+            .setOrigin(0.5);
+
+          this.tweens.add({
+            targets: pulse,
+            alpha: { from: 0.1, to: 0 },
+            scale: { from: 0.8, to: 1.2 },
+            duration: 2000 + Math.random() * 2000,
+            repeat: -1,
+            yoyo: true,
+            ease: 'Sine.easeInOut'
+          });
+        }
       }
     }
+
+    // 创建机器核心 (在网格下方)
+    this.createMachineCores(offsetX, this.gridOffset.y + gridHeight, gridWidth);
+
+    // 创建战争迷雾效果
+    this.createFogOfWar(offsetX, this.gridOffset.y, gridWidth, gridHeight);
+  }
+
+  // 添加新方法来创建战争迷雾效果
+  createFogOfWar(x, y, width, height) {
+    // 创建迷雾粒子（调整参数使其更加柔和）
+    const fogParticles = this.add.particles(0, 0, 'particle', {
+      x: x - scaleToDPR(50), // 扩大范围，覆盖边缘
+      y: y - scaleToDPR(50),
+      width: width + scaleToDPR(100), // 增加宽度以覆盖边缘
+      height: height + scaleToDPR(100),
+      quantity: 3,
+      frequency: 300,
+      scale: { start: 1, end: 3 },
+      alpha: { start: 0.03, end: 0 },
+      tint: [0x000000, 0x111111, 0x222222],
+      blendMode: 'MULTIPLY',
+      lifespan: 5000,
+      speedY: { min: -5, max: 5 },
+      speedX: { min: -5, max: 5 },
+      gravityY: 0,
+      emitZone: {
+        type: 'random',
+        source: new Phaser.Geom.Rectangle(-50, -50, width + 100, height + 100)
+      }
+    });
+
+    // 创建更柔和的边缘渐变效果
+    const gradientMask = this.add.graphics();
+    gradientMask.clear();
+
+    // 渐变深度
+    const gradientDepth = scaleToDPR(100);
+
+    // 上边缘渐变 - 使用多层渐变创造更柔和的效果
+    for (let i = 0; i < 5; i++) {
+      const alpha = 0.04 - (i * 0.008);
+      gradientMask.fillGradientStyle(
+        0x000000, 0x000000, 0x000000, 0x000000,
+        alpha, alpha, 0, 0
+      );
+      gradientMask.fillRect(
+        x,
+        y + (i * gradientDepth / 5),
+        width,
+        gradientDepth / 5
+      );
+    }
+
+    // 下边缘渐变
+    for (let i = 0; i < 5; i++) {
+      const alpha = 0.04 - (i * 0.008);
+      gradientMask.fillGradientStyle(
+        0x000000, 0x000000, 0x000000, 0x000000,
+        0, 0, alpha, alpha
+      );
+      gradientMask.fillRect(
+        x,
+        y + height - gradientDepth + (i * gradientDepth / 5),
+        width,
+        gradientDepth / 5
+      );
+    }
+
+    // 左边缘渐变
+    for (let i = 0; i < 5; i++) {
+      const alpha = 0.04 - (i * 0.008);
+      gradientMask.fillGradientStyle(
+        0x000000, 0x000000, 0x000000, 0x000000,
+        alpha, 0, alpha, 0
+      );
+      gradientMask.fillRect(
+        x + (i * gradientDepth / 5),
+        y,
+        gradientDepth / 5,
+        height
+      );
+    }
+
+    // 右边缘渐变
+    for (let i = 0; i < 5; i++) {
+      const alpha = 0.04 - (i * 0.008);
+      gradientMask.fillGradientStyle(
+        0x000000, 0x000000, 0x000000, 0x000000,
+        0, alpha, 0, alpha
+      );
+      gradientMask.fillRect(
+        x + width - gradientDepth + (i * gradientDepth / 5),
+        y,
+        gradientDepth / 5,
+        height
+      );
+    }
+
+    // 添加角落额外的渐变以平滑过渡
+    const cornerSize = scaleToDPR(80);
+    const cornerAlpha = 0.03;
+
+    // 左上角
+    gradientMask.fillGradientStyle(
+      0x000000, 0x000000, 0x000000, 0x000000,
+      cornerAlpha, 0, 0, 0
+    );
+    gradientMask.fillRect(x, y, cornerSize, cornerSize);
+
+    // 右上角
+    gradientMask.fillGradientStyle(
+      0x000000, 0x000000, 0x000000, 0x000000,
+      0, cornerAlpha, 0, 0
+    );
+    gradientMask.fillRect(x + width - cornerSize, y, cornerSize, cornerSize);
+
+    // 左下角
+    gradientMask.fillGradientStyle(
+      0x000000, 0x000000, 0x000000, 0x000000,
+      0, 0, cornerAlpha, 0
+    );
+    gradientMask.fillRect(x, y + height - cornerSize, cornerSize, cornerSize);
+
+    // 右下角
+    gradientMask.fillGradientStyle(
+      0x000000, 0x000000, 0x000000, 0x000000,
+      0, 0, 0, cornerAlpha
+    );
+    gradientMask.fillRect(x + width - cornerSize, y + height - cornerSize, cornerSize, cornerSize);
+
+    // 创建更微妙的动态光效
+    const lightEffect = this.add.graphics();
+
+    this.time.addEvent({
+      delay: 100,
+      callback: () => {
+        lightEffect.clear();
+        lightEffect.lineStyle(scaleToDPR(2), 0x3333ff, 0.05);
+
+        // 创建更柔和的随机光线效果
+        for (let i = 0; i < 4; i++) {
+          const startX = Phaser.Math.Between(x, x + width);
+          const startY = Phaser.Math.Between(y, y + height);
+          const length = Phaser.Math.Between(50, 150);
+          const angle = Phaser.Math.Between(0, 360);
+          const endX = startX + length * Math.cos(angle * Math.PI / 180);
+          const endY = startY + length * Math.sin(angle * Math.PI / 180);
+
+          // 使用多段线条创建更柔和的光效
+          const points = [];
+          const segments = 5;
+          for (let j = 0; j <= segments; j++) {
+            points.push({
+              x: startX + (endX - startX) * (j / segments),
+              y: startY + (endY - startY) * (j / segments)
+            });
+          }
+
+          lightEffect.beginPath();
+          lightEffect.moveTo(points[0].x, points[0].y);
+          for (let j = 1; j < points.length; j++) {
+            const offsetX = Phaser.Math.Between(-3, 3);
+            const offsetY = Phaser.Math.Between(-3, 3);
+            lightEffect.lineTo(points[j].x + offsetX, points[j].y + offsetY);
+          }
+          lightEffect.strokePath();
+        }
+      },
+      loop: true
+    });
   }
 
   // 创建传送门
@@ -2028,7 +2271,7 @@ export default class GameScene extends Phaser.Scene {
   createTowerPanel() {
     const towerTypes = this.towerTypes;
 
-    const panelHeight = scaleToDPR(120); // 从160改为120
+    const panelHeight = scaleToDPR(120);
     const panelY = this.game.config.height - panelHeight;
 
     // 创建滚动面板容器
@@ -2038,12 +2281,13 @@ export default class GameScene extends Phaser.Scene {
     // 添加底板背
     const panelBg = this.add.rectangle(
       0,
-      0,
+      this.game.config.height - panelHeight,
       this.game.config.width,
       panelHeight,
       0x000000,
-      0.8
-    ).setOrigin(0, 0);
+      0.8  // 设置半透明
+    ).setOrigin(0);
+
     scrollPanel.add(panelBg);
 
     // 创建一个容器来放置所有塔
@@ -2159,7 +2403,7 @@ export default class GameScene extends Phaser.Scene {
       towerContainer.add(cardElements);
 
       // 塔的卡片背景
-      const cardBg = this.add.rectangle(0, 0, scaleToDPR(80), scaleToDPR(94),
+      const cardBg = this.add.rectangle(0, 0, scaleToDPR(80), scaleToDPR(90),
         isAffordable ? 0x333333 : 0x222222,
         isAffordable ? 0.8 : 0.5
       )
@@ -2939,6 +3183,13 @@ export default class GameScene extends Phaser.Scene {
       // 显示治疗数字
       this.showHealNumber(targetTower.sprite.x, targetTower.sprite.y, healing);
 
+      const debugFairyEffect = this.sound.add('debug_fairy_attack');
+      // 播放治疗音效
+      debugFairyEffect.play({
+        volume: 0.2,
+        rate: 1.0
+      });
+
       // 创建治疗特效
       this.createHealEffect(sourceTower, targetTower);
     }
@@ -3585,8 +3836,6 @@ export default class GameScene extends Phaser.Scene {
       this.rangeCircle.destroy();
       this.rangeCircle = null;
     }
-
-    // ... rest of the method ...
   }
 
   onTowerDrag(tower, pointer) {
