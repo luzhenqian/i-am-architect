@@ -231,12 +231,14 @@ export default class GameScene extends Phaser.Scene {
       .setDisplaySize(scaleToDPR(48), scaleToDPR(48))
       .setDepth(depth + 2);
 
-    // 等级文字改为白色以增加可读性
+    // 等级文字添加黑色描边以增加可读性
     this.levelText = this.add.text(levelStartX, firstRowY, `${this.level || 1}`, {
       fontSize: `${scaleToDPR(14)}px`,
       fontFamily: 'Arial',
-      color: '#ffffff', // 改为白色
-      fontStyle: 'bold'
+      color: '#ffffff',
+      fontStyle: 'bold',
+      stroke: '#000000',      // 添加黑色描边
+      strokeThickness: 2      // 设置描边宽度
     }).setOrigin(0.5).setDepth(depth + 3);
 
     // 经验条背景
@@ -261,7 +263,7 @@ export default class GameScene extends Phaser.Scene {
     ).setOrigin(0, 0.5).setDepth(depth);
 
     // 中间: 金币
-    const coinX = this.game.config.width / 2 - scaleToDPR(50);
+    const coinX = this.game.config.width / 2 - scaleToDPR(0);
     const coinIcon = this.add.image(coinX, firstRowY, 'coin')
       .setDisplaySize(scaleToDPR(34), scaleToDPR(34))
       .setDepth(depth);
@@ -275,43 +277,15 @@ export default class GameScene extends Phaser.Scene {
       strokeThickness: 2 // 描边宽度
     }).setOrigin(0, 0.5).setDepth(depth);
 
-    // 右侧: 波次和进度条
-    const waveX = this.game.config.width - scaleToDPR(180);
+    // 右侧: 波次文本
+    const waveX = this.game.config.width - scaleToDPR(20); // 改为距离右边20像素
     this.waveText = this.add.text(waveX, firstRowY, `第 ${this.wave} 波`, {
       fontSize: `${scaleToDPR(14)}px`,
       fontFamily: 'Arial',
       color: '#ffffff',
       stroke: '#000000', // 添加描边
       strokeThickness: 1 // 描边宽度
-    }).setOrigin(0, 0.5).setDepth(depth);
-
-    // 波次进度条背景
-    const waveProgressBg = this.add.rectangle(
-      waveX + scaleToDPR(80),
-      firstRowY,
-      scaleToDPR(80),
-      scaleToDPR(6),
-      0x444444,
-      0.8 // 设置半透明
-    ).setOrigin(0, 0.5).setDepth(depth);
-
-    // 波次进度条
-    this.waveProgressBar = this.add.rectangle(
-      waveX + scaleToDPR(80),
-      firstRowY,
-      0,
-      scaleToDPR(6),
-      0x3498db,
-      0.9 // 略微半透明
-    ).setOrigin(0, 0.5).setDepth(depth);
-
-    this.waveProgressBar = this.add.rectangle(
-      waveX + scaleToDPR(80),
-      firstRowY,
-      0,
-      scaleToDPR(6),
-      0x3498db
-    ).setOrigin(0, 0.5).setDepth(depth);
+    }).setOrigin(1, 0.5).setDepth(depth); // 改为右对齐(1, 0.5)
 
     // 第二行只有暂停按钮 (右侧)
     const secondRowY = topBarHeight * 2 / 3 + scaleToDPR(4);
@@ -362,11 +336,8 @@ export default class GameScene extends Phaser.Scene {
     // 更新波次进度显示方法
     this.updateWaveProgress = () => {
       if (this.isWaveActive && this.monstersRemaining > 0) {
-        const progress = 1 - (this.monstersRemaining / (5 + Math.floor(this.wave * 1.5)));
-        this.waveProgressBar.width = scaleToDPR(100) * progress;
         this.waveText.setText(`第 ${this.wave} 波 (${this.monstersRemaining})`);
       } else {
-        this.waveProgressBar.width = 0;
         this.waveText.setText(`第 ${this.wave} 波`);
       }
     };
@@ -3871,7 +3842,7 @@ export default class GameScene extends Phaser.Scene {
   // 修改更新金币显示的方法
   updateGold(amount) {
     this.gold = amount;
-    this.goldText.setText(`金币: ${this.gold}`);
+    this.goldText.setText(`${this.gold}`);
     // 触发金币变化事件
     this.events.emit('goldChanged');
   }
