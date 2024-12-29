@@ -8,8 +8,8 @@ export class TowerManager {
   }
 
   // 更新放置防御塔方法，添加唯一ID
-  placeTower(row, col, towerType) {
-    if (!this.canPlaceTower(row, col)) return;
+  place(row, col, towerType) {
+    if (!this.canPlace(row, col)) return;
 
     const tower = this.scene.towerTypes.find(t => t.key === towerType);
     if (!tower || this.scene.gold < tower.cost) return;
@@ -217,7 +217,7 @@ export class TowerManager {
       const healingEvent = this.scene.time.addEvent({
         delay: Math.floor(1000 / tower.attackSpeed), // 根据攻击速度设置间隔
         callback: () => {
-          this.healNearbyTowers(newTower);
+          this.healNear(newTower);
         },
         loop: true
       });
@@ -230,7 +230,7 @@ export class TowerManager {
   }
 
   // 检查是否可以放置防御塔
-  canPlaceTower(row, col) {
+  canPlace(row, col) {
     return row >= 0 && row < this.scene.gridSize.rows &&
       col >= 0 && col < this.scene.gridSize.cols &&
       this.scene.grid[row] &&
@@ -415,7 +415,7 @@ export class TowerManager {
         const aoeRadius = this.scene.cellSize * 1.5;
 
         // 找出范围内的所有怪物
-        this.scene.monsters.forEach(targetMonster => {
+        this.scene.monsterManager.monsters.forEach(targetMonster => {
           if (targetMonster.isDying) return;
 
           const distance = Phaser.Math.Distance.Between(
@@ -885,7 +885,7 @@ export class TowerManager {
     let shortestDistance = Infinity;
 
     // 遍历所有怪物
-    this.scene.monsters.forEach(monster => {
+    this.scene.monsterManager.monsters.forEach(monster => {
       // 跳过正在死亡的怪物
       if (monster.isDying) return;
 
@@ -963,8 +963,8 @@ export class TowerManager {
   }
 
   // 添加调试精灵的治疗功能
-  healNearbyTowers(sourceTower) {
-    const healRadius = sourceTower.range * this.cellSize;
+  healNear(sourceTower) {
+    const healRadius = sourceTower.range * this.scene.cellSize;
     let targetTower = null;
     let lowestHealthPercentage = 1;
 
@@ -994,12 +994,12 @@ export class TowerManager {
 
       // 更新血条
       const healthPercentage = targetTower.health / targetTower.maxHealth;
-      this.updateHealthBar(targetTower.healthBar, healthPercentage);
+      this.scene.updateHealthBar(targetTower.healthBar, healthPercentage);
 
       // 显示治疗数字
-      this.showHealNumber(targetTower.sprite.x, targetTower.sprite.y, healing);
+      this.scene.showHealNumber(targetTower.sprite.x, targetTower.sprite.y, healing);
 
-      const debugFairyEffect = this.sound.add('debug_fairy_attack');
+      const debugFairyEffect = this.scene.sound.add('debug_fairy_attack');
       // 播放治疗音效
       debugFairyEffect.play({
         volume: 0.2,
@@ -1074,7 +1074,7 @@ export class TowerManager {
 
     // 创建扩散动画
     let progress = 0;
-    const expandRing = this.time.addEvent({
+    const expandRing = this.scene.time.addEvent({
       delay: 16, // 约60fps
       callback: () => {
         progress += 0.05; // 控制动画速度
@@ -1148,34 +1148,6 @@ export class TowerManager {
       duration: 1000,
       ease: 'Quad.out',
       onComplete: () => healSymbol.destroy()
-    });
-  }
-
-  // 更新显示治疗数字的方
-  showHealNumber(x, y, amount) {
-    const healText = this.scene.add.text(x, y - scaleToDPR(20), `+${amount}`, {
-      fontSize: `${scaleToDPR(20)}px`,
-      fontFamily: 'Arial',
-      color: '#00ff88',
-      stroke: '#003311',
-      strokeThickness: scaleToDPR(3),
-      shadow: {
-        offsetX: 1,
-        offsetY: 1,
-        color: '#003311',
-        blur: 3,
-        fill: true
-      }
-    }).setOrigin(0.5);
-
-    this.scene.tweens.add({
-      targets: healText,
-      y: y - scaleToDPR(50),
-      alpha: 0,
-      scale: { from: 1, to: 1.2 },
-      duration: 1000,
-      ease: 'Quad.out',
-      onComplete: () => healText.destroy()
     });
   }
 
@@ -1290,6 +1262,75 @@ export class TowerManager {
       duration: 500,
       ease: 'Power2',
       onComplete: () => indicator.destroy()
+    });
+  }
+
+  // 防御塔摧毁效果
+  destroy(tower) {
+    if (tower.isDestroying) {
+      return;
+    }
+    tower.isDestroying = true;
+    // 播放防御塔摧毁音效
+    const soundKey = `${tower.type}_die`;
+    const dieSound = this.scene.sound.add(soundKey);
+    dieSound.play({
+      volume: 0.2,
+      rate: 1.0
+    });
+
+    // 如果代码精灵，清理治疗定时器
+    if (tower.type === 'debug_fairy' && tower.healingEvent) {
+      tower.healingEvent.destroy();
+    }
+    // 如果是区块链节点，清理金币生成定时器
+    if (tower.type === 'blockchain_node' && tower.goldGenerationEvent) {
+      tower.goldGenerationEvent.destroy();
+    }
+
+    // 创建爆炸效果
+    const explosion = this.scene.add.particles(0, 0, 'particle', {
+      x: tower.sprite.x,
+      y: tower.sprite.y,
+      speed: { min: 100, max: 200 },
+      angle: { min: 0, max: 360 },
+      scale: { start: 1, end: 0 },
+      blendMode: 'ADD',
+      lifespan: 800,
+      quantity: 30,
+      tint: [0xff9900, 0xff6600, 0xff3300]
+    });
+
+    // 播放爆炸动画
+    this.scene.tweens.add({
+      targets: tower.sprite,
+      alpha: 0,
+      scale: 1.4,
+      duration: 500,
+      ease: 'Power2',
+      onComplete: () => {
+        // 清理资源
+        explosion.destroy();
+        tower.healthBar.background.destroy();
+        tower.healthBar.bar.destroy();
+        tower.sprite.destroy();
+
+        // 从数组中移除防御塔
+        const index = this.towers.indexOf(tower);
+        if (index > -1) {
+          this.towers.splice(index, 1);
+        }
+
+        // 清除网格占用状态
+        this.scene.grid[tower.row][tower.col].occupied = false;
+      }
+    });
+
+    // 血条淡出
+    this.scene.tweens.add({
+      targets: [tower.healthBar.background, tower.healthBar.bar],
+      alpha: 0,
+      duration: 500
     });
   }
 }

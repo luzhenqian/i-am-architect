@@ -2,6 +2,7 @@ import Phaser from 'phaser';
 import { GameConfig } from '../config/GameConfig';
 import { scaleToDPR } from '../shared/utils';
 import { TowerManager } from './components/TowerManager';
+import { MonsterManager } from './components/MonsterManager';
 
 export default class GameScene extends Phaser.Scene {
   constructor(data) {
@@ -12,7 +13,6 @@ export default class GameScene extends Phaser.Scene {
     this.initialGold = this.config.initialGold;
     this.gold = this.config.initialGold;
     this.playerHealth = this.config.initialHealth;
-    this.monsters = [];
     this.wave = 1;
     this.countdown = 3;
     this.isWaveActive = false;
@@ -29,6 +29,7 @@ export default class GameScene extends Phaser.Scene {
     this.nextLevelExp = this.config.levelExperience.getNextLevelExp(this.level);
 
     this.towerManager = new TowerManager(this);
+    this.monsterManager = new MonsterManager(this);
   }
 
   init(data) {
@@ -205,8 +206,7 @@ export default class GameScene extends Phaser.Scene {
   update(time, delta) {
     // 只在非拖拽状态下更新游戏逻辑
     if (!this.isDragging) {
-      this.updateMonsters();
-      // this.updateTowers(time, delta);
+      this.monsterManager.update(time, delta);
       this.towerManager.update(time, delta);
 
       // 更新所有防御塔的血条位置
@@ -435,207 +435,31 @@ export default class GameScene extends Phaser.Scene {
     });
   }
 
-  // 更新怪物
-  updateMonsters() {
-    for (let i = this.monsters.length - 1; i >= 0; i--) {
-      const monster = this.monsters[i];
-
-      if (monster.isDying) continue;
-
-      // 检查是否与防御塔碰撞
-      const collidingTower = this.checkTowerCollision(monster);
-
-      if (collidingTower) {
-        // 如果碰到防御塔，停止移动并攻击
-        if (!monster.attackingTower) {
-          monster.attackingTower = collidingTower;
-          monster.lastAttackTime = 0;
-        }
-
-        this.monsterAttackTower(monster);
-        // 即使在攻击时也要更新血条位置
-        this.updateMonsterHealthBarPosition(monster);
-      } else {
-        // 正常移动
-        monster.sprite.y += monster.speed;
-        monster.attackingTower = null;
-
-        // 更新血条位置
-        this.updateMonsterHealthBarPosition(monster);
-
-        // 首检查是否有任何finally代码块被触碰
-        const finallyBlocks = this.codeBlocks?.filter(block => block.type === 'finally') || [];
-        for (const finallyBlock of finallyBlocks) {
-          if (Math.abs(monster.sprite.y - finallyBlock.sprite.y) < this.cellSize * 0.5 &&
-            Math.abs(monster.sprite.x - finallyBlock.sprite.x) < this.cellSize * 0.5) {
-            // 如果碰到任何finally代码块，直接结束游戏
-            this.handleGameOver();
-            this.playDeathAnimation(monster);
-            return;
-          }
-        }
-
-        // 检查是否与机器核心或catch代块碰撞
-        const machineCore = this.machineCores[monster.column];
-        const codeBlock = this.findCodeBlockInColumn(monster.column);
-
-        if (machineCore && !machineCore.isDestroyed &&
-          Math.abs(monster.sprite.y - machineCore.y) < this.cellSize * 0.5) {
-          // 与机器核心碰撞
-          this.destroyMachineCore(monster.column);
-          this.createCodeBlock(monster.column, 'catch');
-          this.playDeathAnimation(monster);
-        } else if (codeBlock && codeBlock.type === 'catch' &&
-          Math.abs(monster.sprite.y - codeBlock.sprite.y) < this.cellSize * 0.5) {
-          // 与catch代码块碰撞
-          this.triggerCodeBlockExplosion(codeBlock);
-          this.createCodeBlock(monster.column, 'finally');
-          this.playDeathAnimation(monster);
-        }
+  // 显示治疗数字
+  showHealNumber(x, y, amount) {
+    const healText = this.add.text(x, y - scaleToDPR(20), `+${amount}`, {
+      fontSize: `${scaleToDPR(20)}px`,
+      fontFamily: 'Arial',
+      color: '#00ff88',
+      stroke: '#003311',
+      strokeThickness: scaleToDPR(3),
+      shadow: {
+        offsetX: 1,
+        offsetY: 1,
+        color: '#003311',
+        blur: 3,
+        fill: true
       }
-    }
-  }
+    }).setOrigin(0.5);
 
-  // 检查与防御塔的碰撞
-  checkTowerCollision(monster) {
-    return this.towerManager.towers.find(tower => {
-      const distance = Phaser.Math.Distance.Between(
-        monster.sprite.x,
-        monster.sprite.y,
-        tower.sprite.x,
-        tower.sprite.y
-      );
-      return distance < this.cellSize * 0.6;
-    });
-  }
-
-  // 怪物攻击防御塔
-  monsterAttackTower(monster) {
-    const currentTime = this.time.now;
-
-    if (!monster.lastAttackTime ||
-      currentTime - monster.lastAttackTime >= monster.attackSpeed) {
-
-      monster.lastAttackTime = currentTime;
-      const tower = monster.attackingTower;
-
-      // 创建攻击特效
-      this.createMonsterAttackEffect(monster, tower);
-
-      // 调计算公式
-      const baseDamage = monster.attack * 2; // 增加基础伤害
-      const defense = tower.defense || 0;
-      const damage = Math.max(5, baseDamage - defense); // 确最小伤害为5
-
-      // 应伤害
-      tower.health -= damage;
-
-      // 更新血条
-      const healthPercentage = Math.max(0, tower.health / tower.maxHealth);
-      this.updateHealthBar(tower.healthBar, healthPercentage);
-
-      // 显示伤害数字
-      this.showDamageNumber(tower.sprite.x, tower.sprite.y, damage);
-
-      // 检查防御塔是否被摧毁
-      if (tower.health <= 0) {
-        this.destroyTower(tower);
-      }
-    }
-  }
-
-  // 创建怪物攻击特效
-  createMonsterAttackEffect(monster, tower) {
-    // 创建攻击线
-    const line = this.add.graphics();
-    line.lineStyle(2, 0xff0000, 1);
-    line.beginPath();
-    line.moveTo(monster.sprite.x, monster.sprite.y);
-    line.lineTo(tower.sprite.x, tower.sprite.y);
-    line.strokePath();
-
-    // 创建攻击波
-    const impact = this.add.circle(tower.sprite.x, tower.sprite.y, 10, 0xff0000, 0.7);
-
-    // 动画效果
     this.tweens.add({
-      targets: [line, impact],
+      targets: healText,
+      y: y - scaleToDPR(50),
       alpha: 0,
-      scale: { value: 1.5, ease: 'Power2' },
-      duration: 200,
-      onComplete: () => {
-        line.destroy();
-        impact.destroy();
-      }
-    });
-  }
-
-  // 防御塔摧毁效果
-  destroyTower(tower) {
-    if (tower.isDestroying) {
-      return;
-    }
-    tower.isDestroying = true;
-    // 播放防御塔摧毁音效
-    const soundKey = `${tower.type}_die`;
-    const dieSound = this.sound.add(soundKey);
-    dieSound.play({
-      volume: 0.2,
-      rate: 1.0
-    });
-
-    // 如果代码精灵，清理治疗定时器
-    if (tower.type === 'debug_fairy' && tower.healingEvent) {
-      tower.healingEvent.destroy();
-    }
-    // 如果是区块链节点，清理金币生成定时器
-    if (tower.type === 'blockchain_node' && tower.goldGenerationEvent) {
-      tower.goldGenerationEvent.destroy();
-    }
-
-    // 创建爆炸效果
-    const explosion = this.add.particles(0, 0, 'particle', {
-      x: tower.sprite.x,
-      y: tower.sprite.y,
-      speed: { min: 100, max: 200 },
-      angle: { min: 0, max: 360 },
-      scale: { start: 1, end: 0 },
-      blendMode: 'ADD',
-      lifespan: 800,
-      quantity: 30,
-      tint: [0xff9900, 0xff6600, 0xff3300]
-    });
-
-    // 播放爆炸动画
-    this.tweens.add({
-      targets: tower.sprite,
-      alpha: 0,
-      scale: 1.4,
-      duration: 500,
-      ease: 'Power2',
-      onComplete: () => {
-        // 清理资源
-        explosion.destroy();
-        tower.healthBar.background.destroy();
-        tower.healthBar.bar.destroy();
-        tower.sprite.destroy();
-
-        // 从数组中移除防御塔
-        const index = this.towerManager.towers.indexOf(tower);
-        if (index > -1) {
-          this.towerManager.towers.splice(index, 1);
-        }
-
-        // 清除网格占用状态
-        this.grid[tower.row][tower.col].occupied = false;
-      }
-    });
-
-    // 血条淡出
-    this.tweens.add({
-      targets: [tower.healthBar.background, tower.healthBar.bar],
-      alpha: 0,
-      duration: 500
+      scale: { from: 1, to: 1.2 },
+      duration: 1000,
+      ease: 'Quad.out',
+      onComplete: () => healText.destroy()
     });
   }
 
@@ -1672,9 +1496,9 @@ export default class GameScene extends Phaser.Scene {
 
         const cellCoords = this.screenToGrid(pointer.x, pointer.y);
 
-        if (cellCoords && this.towerManager.canPlaceTower(cellCoords.row, cellCoords.col)) {
+        if (cellCoords && this.towerManager.canPlace(cellCoords.row, cellCoords.col)) {
           // this.placeTower(cellCoords.row, cellCoords.col, this.dragTower.type);
-          this.towerManager.placeTower(cellCoords.row, cellCoords.col, this.dragTower.type);
+          this.towerManager.place(cellCoords.row, cellCoords.col, this.dragTower.type);
         }
 
         this.clearHighlight();
@@ -1933,7 +1757,7 @@ export default class GameScene extends Phaser.Scene {
     );
 
     // 添加到怪物数组
-    this.monsters.push(monster);
+    this.monsterManager.monsters.push(monster);
 
     return monster;
   }
@@ -1983,7 +1807,7 @@ export default class GameScene extends Phaser.Scene {
       if (cell.occupied) {
         // 已占用格子显示红色
         cell.cell.setStrokeStyle(scaleToDPR(2), 0xff0000);
-      } else if (this.towerManager.canPlaceTower(row, col)) {
+      } else if (this.towerManager.canPlace(row, col)) {
         // 可放置格子显示绿色
         cell.cell.setStrokeStyle(scaleToDPR(2), 0x00ff00);
       } else {
@@ -2345,9 +2169,9 @@ export default class GameScene extends Phaser.Scene {
         this.showRewardText(monster.sprite.x, monster.sprite.y, monster.reward);
 
         // 从数组中移除怪物
-        const index = this.monsters.indexOf(monster);
+        const index = this.monsterManager.monsters.indexOf(monster);
         if (index > -1) {
-          this.monsters.splice(index, 1);
+          this.monsterManager.monsters.splice(index, 1);
         }
       }
     });
@@ -2399,16 +2223,6 @@ export default class GameScene extends Phaser.Scene {
   // 创建怪物路径
   createMonsterPath() {
     return null;
-  }
-
-  // 更新怪物血条位置
-  updateMonsterHealthBarPosition(monster) {
-    if (monster.healthBar) {
-      monster.healthBar.background.x = monster.sprite.x;
-      monster.healthBar.background.y = monster.sprite.y - scaleToDPR(25); // 保持相同的偏移值
-      monster.healthBar.bar.x = monster.sprite.x - monster.healthBar.width / 2;
-      monster.healthBar.bar.y = monster.sprite.y - scaleToDPR(25); // 保持相同的偏移值
-    }
   }
 
   // 更新波次进度显示
@@ -2927,16 +2741,7 @@ export default class GameScene extends Phaser.Scene {
     });
 
     // 清理所有现有的怪物
-    this.monsters.forEach(monster => {
-      if (monster.sprite) {
-        monster.sprite.destroy();
-        if (monster.healthBar) {
-          monster.healthBar.background.destroy();
-          monster.healthBar.bar.destroy();
-        }
-      }
-    });
-    this.monsters = [];
+    this.monsterManager.destroyAll();
   }
 
   // 创建最终爆炸效果
