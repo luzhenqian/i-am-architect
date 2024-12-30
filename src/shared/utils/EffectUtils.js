@@ -43,7 +43,7 @@ export class EffectUtils {
   }
 
   // 代码战士的攻击效果
-  static createCodeWarriorAttackEffect(scene, tower, monster, color = 0x00ffff) {
+  static createCodeWarriorAttackEffect(scene, tower, monster, color = 0x00ffff, onHit) {
     const startPos = { x: tower.sprite.x, y: tower.sprite.y };
     const endPos = { x: monster.sprite.x, y: monster.sprite.y };
 
@@ -94,6 +94,7 @@ export class EffectUtils {
       duration: 400,
       ease: 'Cubic.easeOut',
       onComplete: () => {
+        if (onHit) onHit();
         // 创建命中效果
         const impact = scene.add.circle(endPos.x, endPos.y, scaleToDPR(15), 0x00ffff, 0.8);
 
@@ -156,7 +157,7 @@ export class EffectUtils {
   }
 
   // 算法炮台的攻击效果
-  static createAlgoCannonAttackEffect(scene, tower, monster, color = 0x333333) {
+  static createAlgoCannonAttackEffect(scene, tower, monster, color = 0x333333, onHit) {
     const startPos = { x: tower.sprite.x, y: tower.sprite.y };
     const endPos = { x: monster.sprite.x, y: monster.sprite.y };
 
@@ -172,6 +173,7 @@ export class EffectUtils {
       duration: 400,
       ease: 'Linear',
       onComplete: () => {
+        if (onHit) onHit();
         shell.destroy();
 
         // 创建爆炸中心闪光
@@ -262,7 +264,7 @@ export class EffectUtils {
   }
 
   // AI狙击手的攻击效果
-  static createAiSniperAttackEffect(scene, tower, monster, color = 0xff0000) {
+  static createAiSniperAttackEffect(scene, tower, monster, color = 0xff0000, onHit) {
     // 1. 创建瞄准线效果 - 使用虚线
     const aimLine = scene.add.graphics();
     aimLine.lineStyle(scaleToDPR(1), 0xff0000, 0.3, 1); // 最后一个参数是虚线
@@ -325,6 +327,9 @@ export class EffectUtils {
       duration: 100, // 更快的子弹速度
       ease: 'Linear',
       onComplete: () => {
+        // 触发命中回调
+        if (onHit) onHit();
+        
         // 创建击中效果
         const impact = scene.add.circle(monster.sprite.x, monster.sprite.y, scaleToDPR(5), 0xffffff, 1);
 
@@ -387,7 +392,7 @@ export class EffectUtils {
   }
 
   // 默认攻击效果
-  static createDefaultAttackEffect(scene, tower, monster, color = 0x00ff00) {
+  static createDefaultAttackEffect(scene, tower, monster, color = 0x00ff00, onHit) {
     // 其他防御塔的默认效果
     const line = scene.add.graphics();
     line.lineStyle(scaleToDPR(2), color, 1);
@@ -415,7 +420,9 @@ export class EffectUtils {
       tint: color
     });
 
+    // 在特效完成时调用回调
     scene.time.delayedCall(300, () => {
+      if (onHit) onHit();
       line.destroy();
       startPoint.destroy();
       endPoint.destroy();

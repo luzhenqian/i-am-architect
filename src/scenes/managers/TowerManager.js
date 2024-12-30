@@ -53,7 +53,7 @@ export class TowerManager {
       maxHealth: tower.health,
       healthBar: healthBar,
       range: tower.range,
-      damage: tower.attack,
+      attack: tower.attack,
       defense: tower.defense,
       attackSpeed: tower.attackSpeed,
       lastAttackTime: 0
@@ -426,59 +426,111 @@ export class TowerManager {
       this.clearTowerEffects(tower);
     }
 
-    // 创建攻击特效
-    EffectUtils.createAttackEffect(this.scene, tower, monster, tower.attackColor || 0x00ff00);
-
     // 根据防御塔类型处理不同的攻击逻辑
     switch (towerType.key) {
       case 'algo_cannon':
-        // 算法炮台的范围伤害
-        const aoeRadius = this.scene.cellSize * 1.5;
+        // 创建攻击特效，并在特效完成时处理范围伤害
+        EffectUtils.createAlgoCannonAttackEffect(this.scene, tower, monster, tower.attackColor || 0x00ff00, () => {
+          const aoeRadius = this.scene.cellSize * 1.5;
 
-        // 找出范围内的所有怪物
-        this.scene.monsterManager.monsters.forEach(targetMonster => {
-          if (targetMonster.isDying) return;
+          // 找出范围内的所有怪物
+          this.scene.monsterManager.monsters.forEach(targetMonster => {
+            if (targetMonster.isDying) return;
 
-          const distance = Phaser.Math.Distance.Between(
+            const distance = Phaser.Math.Distance.Between(
+              monster.sprite.x,
+              monster.sprite.y,
+              targetMonster.sprite.x,
+              targetMonster.sprite.y
+            );
+
+            if (distance <= aoeRadius) {
+              const damageRatio = Math.max(0.5, 1 - (distance / aoeRadius));
+              const baseDamage = tower.attack || towerType.attack || 15;
+              const damage = Math.max(1, Math.floor(baseDamage * damageRatio));
+
+              this.scene.monsterManager.damage(targetMonster, damage);
+              DisplayUtils.createDamageNumber(this.scene, targetMonster.sprite.x, targetMonster.sprite.y, damage, 0xff4400);
+            }
+          });
+
+          this.showAOEIndicator(monster.sprite.x, monster.sprite.y, aoeRadius);
+        });
+        return true;
+
+      case 'code_warrior':
+        // 创建攻击特效，并在特效完成时处理伤害
+        EffectUtils.createCodeWarriorAttackEffect(this.scene, tower, monster, tower.attackColor || 0x00ff00, () => {
+          const baseDamage = tower.attack || towerType.attack || 10;
+          const finalDamage = this.handleCodeWarriorSkill(tower, monster, baseDamage);
+          this.scene.monsterManager.damage(monster, finalDamage);
+          DisplayUtils.createDamageNumber(
+            this.scene,
             monster.sprite.x,
             monster.sprite.y,
-            targetMonster.sprite.x,
-            targetMonster.sprite.y
+            finalDamage,
+            0x00ff00
           );
-
-          // 如果在爆炸范围内
-          if (distance <= aoeRadius) {
-            // 计算伤害衰减（距离中心越远伤害越低）
-            const damageRatio = Math.max(0.5, 1 - (distance / aoeRadius));
-            const baseDamage = tower.attack || towerType.attack || 15;
-            const damage = Math.max(1, Math.floor(baseDamage * damageRatio));
-
-            this.scene.monsterManager.damage(targetMonster, damage);
-            DisplayUtils.createDamageNumber(this.scene, targetMonster.sprite.x, targetMonster.sprite.y, damage, 0xff4400);
-          }
         });
+        break;
 
-        this.showAOEIndicator(monster.sprite.x, monster.sprite.y, aoeRadius);
-        return true;
-      case 'code_warrior':
-        const baseDamage = tower.attack || towerType.attack || 10;
-        const finalDamage = this.handleCodeWarriorSkill(tower, monster, baseDamage);
-        this.scene.monsterManager.damage(monster, finalDamage);
+      case 'ai_sniper':
+        this.handleAiSniperAttack(tower, monster);
+        break;
+
+      default:
+        // 创建默认攻击特效，并在特效完成时处理伤害
+        EffectUtils.createDefaultAttackEffect(this.scene, tower, monster, tower.attackColor || 0x00ff00, () => {
+          const defaultBaseDamage = tower.attack || towerType.attack || 10;
+          const defaultMonsterDefense = monster.defense || 0;
+          const defaultDamage = Math.max(1, Math.floor(defaultBaseDamage - defaultMonsterDefense));
+          this.scene.monsterManager.damage(monster, defaultDamage);
+          DisplayUtils.createDamageNumber(
+            this.scene,
+            monster.sprite.x,
+            monster.sprite.y,
+            defaultDamage,
+            0x00ff00
+          );
+        });
+    }
+  }
+
+  handleAiSniperAttack(tower, monster) {
+    const towerConfig = this.scene.config.towerConfig.getTowerByKey('ai_sniper');
+    const skill = towerConfig.skill;
+
+    // 创建攻击特效
+    EffectUtils.createAiSniperAttackEffect(this.scene, tower, monster, towerConfig.effectColor, () => {
+      // 计算是否触发暴击
+      const isCritical = Math.random() < skill.criticalChance;
+
+      // 计算伤害
+      let damage = tower.attack;
+      if (isCritical) {
+        damage *= skill.criticalMultiplier;
+
+        DisplayUtils.createCriticalDamageNumber(
+          this.scene,
+          monster.sprite.x,
+          monster.sprite.y,
+          Math.floor(damage)
+        );
+      } else {
         DisplayUtils.createDamageNumber(
           this.scene,
           monster.sprite.x,
           monster.sprite.y,
-          finalDamage,
+          Math.floor(damage),
           0x00ff00
         );
-        break;
-      default:
-        // 其他防御塔的单体伤害
-        const defaultBaseDamage = tower.attack || towerType.attack || 10;
-        const defaultMonsterDefense = monster.defense || 0;
-        const defaultDamage = Math.max(1, Math.floor(defaultBaseDamage - defaultMonsterDefense));
-        this.scene.monsterManager.damage(monster, defaultDamage);
-    }
+      }
+
+      this.scene.monsterManager.damage(monster, damage);
+    });
+
+    // 更新塔的最后攻击时间
+    tower.lastAttackTime = this.scene.time.now;
   }
 
   // 添加查找目标的函数

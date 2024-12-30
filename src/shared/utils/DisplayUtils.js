@@ -22,27 +22,6 @@ export class DisplayUtils {
     };
   }
 
-  // 创建渐变文本
-  static createGradientText(scene, x, y, text, config = {}) {
-    const {
-      fontSize = '20px',
-      fontFamily = 'Arial',
-      gradient: gradientColors = ['#ff0000', '#ffff00']
-    } = config;
-
-    const textObject = scene.add.text(x, y, text, {
-      fontSize,
-      fontFamily
-    });
-
-    const textGradient = textObject.context.createLinearGradient(0, 0, 0, textObject.height);
-    textGradient.addColorStop(0, gradientColors[0]);
-    textGradient.addColorStop(1, gradientColors[1]);
-    textObject.setFill(textGradient);
-
-    return textObject;
-  }
-
   // 创建伤害数字
   static createDamageNumber(scene, x, y, amount, color = 0xff0000) {
     const damageText = scene.add.text(x, y - scaleToDPR(20), amount.toString(), {
@@ -60,6 +39,34 @@ export class DisplayUtils {
       duration: 1000,
       ease: 'Power2',
       onComplete: () => damageText.destroy()
+    });
+  }
+
+  // 创建暴击伤害数字
+  static createCriticalDamageNumber(scene, x, y, amount) {
+    const critText = scene.add.text(x, y - scaleToDPR(20), amount.toString(), {
+      fontSize: `${scaleToDPR(28)}px`,  // 比普通伤害字体更大
+      fontFamily: 'Arial',
+      color: '#ff9900',  // 使用橙色来区分暴击
+      stroke: '#660000',
+      strokeThickness: scaleToDPR(4),
+      shadow: {
+        offsetX: 2,
+        offsetY: 2,
+        color: '#ff0000',
+        blur: 5,
+        fill: true
+      }
+    }).setOrigin(0.5);
+
+    scene.tweens.add({
+      targets: critText,
+      y: y - scaleToDPR(70),  // 上升距离更长
+      alpha: { from: 1, to: 0 },
+      scale: { from: 1.2, to: 1.5 },  // 添加缩放效果
+      duration: 1200,
+      ease: 'Back.easeOut',
+      onComplete: () => critText.destroy()
     });
   }
 
