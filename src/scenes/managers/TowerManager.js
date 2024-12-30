@@ -7,6 +7,7 @@ export class TowerManager {
   constructor(scene) {
     this.scene = scene;
     this.towers = [];
+    this.consecutiveHits = new Map(); // 记录连续命中次数
   }
 
   // 放置防御塔
@@ -59,7 +60,7 @@ export class TowerManager {
     };
 
     // 添加对话框
-    this.addTowerDialogue(newTower);
+    // this.addTowerDialogue(newTower);
 
     // 将每秒攻击次数转换为毫秒间隔
     const towerConfig = this.scene.config.towerConfig.towerTypes.find(t => t.key === towerType);
@@ -230,6 +231,50 @@ export class TowerManager {
     }
 
     return newTower;
+  }
+
+  // 处理代码战士的连续攻击
+  handleCodeWarriorSkill(tower, monster, baseDamage) {
+    const towerId = tower.id;
+    const monsterId = monster.id;
+    const key = `${towerId}-${monsterId}`;
+
+    // 如果是新目标，重置连击计数
+    if (!this.consecutiveHits.has(key)) {
+      this.consecutiveHits.set(key, 1);
+    } else {
+      this.consecutiveHits.set(key, this.consecutiveHits.get(key) + 1);
+    }
+
+    const hits = this.consecutiveHits.get(key);
+    const towerConfig = this.scene.config.towerConfig.getTowerByKey('code_warrior');
+    const damageIncrement = towerConfig.skill.damageIncrement;
+
+    // 计算额外伤害
+    const bonusDamage = Math.floor(damageIncrement * (hits - 1));
+    const totalDamage = baseDamage + bonusDamage;
+
+    // 如果有额外伤害，显示特效
+    if (bonusDamage > 0) {
+      DisplayUtils.createDamageNumber(
+        this.scene,
+        monster.sprite.x + 20,
+        monster.sprite.y,
+        `+${bonusDamage}`,
+        0x00ff00
+      );
+    }
+
+    return totalDamage;
+  }
+
+  // 清理连击记录
+  clearConsecutiveHits(monsterId) {
+    for (const [key, value] of this.consecutiveHits.entries()) {
+      if (key.includes(monsterId)) {
+        this.consecutiveHits.delete(key);
+      }
+    }
   }
 
   // 检查是否可以放置防御塔
@@ -415,7 +460,18 @@ export class TowerManager {
 
         this.showAOEIndicator(monster.sprite.x, monster.sprite.y, aoeRadius);
         return true;
-
+      case 'code_warrior':
+        const baseDamage = tower.attack || towerType.attack || 10;
+        const finalDamage = this.handleCodeWarriorSkill(tower, monster, baseDamage);
+        this.scene.monsterManager.damage(monster, finalDamage);
+        DisplayUtils.createDamageNumber(
+          this.scene,
+          monster.sprite.x,
+          monster.sprite.y,
+          finalDamage,
+          0x00ff00
+        );
+        break;
       default:
         // 其他防御塔的单体伤害
         const defaultBaseDamage = tower.attack || towerType.attack || 10;
@@ -499,7 +555,7 @@ export class TowerManager {
     }
   }
 
-  // 在怪物死亡或离开攻击范围时也要清理特效
+  // 在怪物死亡或离开攻击范围时清理特效
   clearTowerEffects(tower) {
     if (tower.currentEffect) {
       tower.currentEffect.line?.destroy();
@@ -697,100 +753,22 @@ export class TowerManager {
 
   // 添加产生金币的功能
   generateGold(tower, amount) {
-    // 创建金币图标位置（在防御塔稍微上方）
-    const coinX = tower.sprite.x;
-    const coinY = tower.sprite.y - scaleToDPR(30);
+    // 创建金币生成特效
+    EffectUtils.createGoldGenerationEffect(this.scene, tower, amount);
 
-    // 创建金币图标
-    const coinIcon = this.scene.add.circle(
-      coinX,
-      coinY,
-      scaleToDPR(12),
-      0xffd700
-    );
-
-    // 创建金币符号
-    const coinSymbol = this.scene.add.text(
-      coinX,
-      coinY,
-      '₿',
-      {
-        fontSize: `${scaleToDPR(16)}px`,
-        fontFamily: 'Arial',
-        color: '#000000'
-      }
-    ).setOrigin(0.5);
-
-    // 创建金币文本
-    const amountText = this.scene.add.text(
-      coinX + scaleToDPR(20),
-      coinY,
-      `+${amount}`,
-      {
-        fontSize: `${scaleToDPR(16)}px`,
-        fontFamily: 'Arial',
-        color: '#ffd700',
-        stroke: '#000000',
-        strokeThickness: scaleToDPR(2)
-      }
-    ).setOrigin(0, 0.5);
-
-    // 创建粒子效果
-    const particles = this.scene.add.particles(coinX, coinY, 'particle', {
-      speed: { min: scaleToDPR(50), max: scaleToDPR(100) },
-      scale: { start: 0.4, end: 0 },
-      alpha: { start: 0.6, end: 0 },
-      tint: 0xffd700,
-      blendMode: 'ADD',
-      lifespan: 500,
-      quantity: 5,
-      angle: { min: -30, max: 30 }
-    });
-
-    // 金币上升动画
-    this.scene.tweens.add({
-      targets: [coinIcon, coinSymbol, amountText],
-      y: coinY - scaleToDPR(40),
-      alpha: { from: 1, to: 0 },
-      duration: 1000,
-      ease: 'Power2',
-      onComplete: () => {
-        coinIcon.destroy();
-        coinSymbol.destroy();
-        amountText.destroy();
-        particles.destroy();
-      }
-    });
-
-    // 更新金币数量并添加跳动效果
+    // 更新金币数量
     this.scene.updateGold(this.scene.gold + amount);
 
+    // 给金币文本添加跳动效果
     this.scene.tweens.add({
-      targets: this.scene.goldText,
+      targets: this.scene.uiManager.goldText,
       scale: 1.2,
       duration: 100,
       yoyo: true,
-      ease: 'Quad.out',
+      ease: 'Back.easeOut',
       onComplete: () => {
-        this.scene.goldText.setScale(1);
+        this.scene.uiManager.goldText.setScale(1);
       }
-    });
-
-    // 添加闪光效果
-    const flash = this.scene.add.circle(
-      tower.sprite.x,
-      tower.sprite.y,
-      scaleToDPR(25),
-      0xffd700,
-      0.3
-    );
-
-    this.scene.tweens.add({
-      targets: flash,
-      alpha: 0,
-      scale: 1.2,
-      duration: 500,
-      onComplete: () => flash.destroy()
     });
   }
 

@@ -59,7 +59,7 @@ export class UIManager {
       color: '#ffffff',
       fontStyle: 'bold',
       stroke: '#000000',
-      strokeThickness: 2
+      strokeThickness: 6
     }).setOrigin(0.5).setDepth(depth + 6);
 
     // 经验条背景
@@ -114,9 +114,9 @@ export class UIManager {
 
   // 创建暂停按钮
   createPauseButton(depth) {
-    const secondRowY = this.topBarHeight * 2 / 3 + scaleToDPR(8);
+    const secondRowY = this.topBarHeight * 2 / 3 + scaleToDPR(16);
     const pauseButton = this.scene.add.image(
-      this.scene.game.config.width - scaleToDPR(30),
+      scaleToDPR(20),
       secondRowY,
       'pause'
     )
@@ -140,7 +140,7 @@ export class UIManager {
   // 创建波次进度指示器
   createWaveProgressIndicator() {
     this.waveProgress = this.scene.add.text(
-      this.scene.game.config.width - scaleToDPR(30),
+      this.scene.game.config.width - scaleToDPR(20),
       this.topBarHeight - scaleToDPR(10),
       '',
       {

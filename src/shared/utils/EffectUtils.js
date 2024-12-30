@@ -468,4 +468,120 @@ export class EffectUtils {
     scene.time.delayedCall(duration, () => explosion.destroy());
     return explosion;
   }
+
+  // 创建金币生成特效
+  static createGoldGenerationEffect(scene, source, amount) {
+    const startX = source.sprite.x;
+    const startY = source.sprite.y - scaleToDPR(30);
+    
+    // 创建金币容器
+    const coinContainer = scene.add.container(startX, startY);
+    
+    // 创建金币背景光晕
+    const glow = scene.add.circle(0, 0, scaleToDPR(15), 0xffd700, 0.3);
+    
+    // 创建金币主体
+    const coinBody = scene.add.circle(0, 0, scaleToDPR(12), 0xffd700);
+    const coinInner = scene.add.circle(0, 0, scaleToDPR(10), 0xffed4a);
+    
+    // 创建比特币符号
+    const btcSymbol = scene.add.text(0, 0, '₿', {
+      fontSize: `${scaleToDPR(14)}px`,
+      fontFamily: 'Arial',
+      color: '#996515'
+    }).setOrigin(0.5);
+    
+    // 创建金额文本
+    const amountText = scene.add.text(scaleToDPR(20), 0, `+${amount}`, {
+      fontSize: `${scaleToDPR(16)}px`,
+      fontFamily: 'Arial',
+      color: '#ffd700',
+      stroke: '#000000',
+      strokeThickness: scaleToDPR(3)
+    }).setOrigin(0, 0.5);
+    
+    // 添加所有元素到容器
+    coinContainer.add([glow, coinBody, coinInner, btcSymbol, amountText]);
+    
+    // 创建金币闪光粒子
+    const sparkles = scene.add.particles(startX, startY, 'particle', {
+      speed: { min: scaleToDPR(30), max: scaleToDPR(60) },
+      scale: { start: 0.4, end: 0 },
+      alpha: { start: 0.8, end: 0 },
+      tint: [0xffd700, 0xffed4a, 0xffffff],
+      blendMode: 'ADD',
+      lifespan: 800,
+      quantity: 2,
+      frequency: 100,
+      angle: { min: 0, max: 360 }
+    });
+    
+    // 创建上升的小金币粒子
+    const risingCoins = scene.add.particles(startX, startY, 'particle', {
+      speed: { min: scaleToDPR(40), max: scaleToDPR(80) },
+      scale: { start: 0.3, end: 0 },
+      alpha: { start: 1, end: 0 },
+      tint: 0xffd700,
+      blendMode: 'ADD',
+      lifespan: 1000,
+      quantity: 1,
+      frequency: 200,
+      angle: { min: -30, max: 30 },
+      gravityY: scaleToDPR(-50)
+    });
+    
+    // 金币脉冲动画
+    scene.tweens.add({
+      targets: [coinBody, coinInner],
+      scaleX: 1.2,
+      scaleY: 1.2,
+      duration: 300,
+      yoyo: true,
+      repeat: 2,
+      ease: 'Sine.easeInOut'
+    });
+    
+    // 光晕呼吸动画
+    scene.tweens.add({
+      targets: glow,
+      alpha: 0.6,
+      scale: 1.3,
+      duration: 500,
+      yoyo: true,
+      repeat: 2,
+      ease: 'Sine.easeInOut'
+    });
+    
+    // 整体上升并淡出动画
+    scene.tweens.add({
+      targets: coinContainer,
+      y: startY - scaleToDPR(30),
+      alpha: 0,
+      duration: 1500,
+      ease: 'Power2',
+      onComplete: () => {
+        coinContainer.destroy();
+        sparkles.destroy();
+        risingCoins.destroy();
+      }
+    });
+    
+    // 创建波纹效果
+    const ripple = scene.add.circle(startX, startY, scaleToDPR(20), 0xffd700, 0.3);
+    scene.tweens.add({
+      targets: ripple,
+      scale: 2,
+      alpha: 0,
+      duration: 800,
+      ease: 'Sine.easeOut',
+      onComplete: () => ripple.destroy()
+    });
+
+    return {
+      container: coinContainer,
+      sparkles,
+      risingCoins,
+      ripple
+    };
+  }
 } 

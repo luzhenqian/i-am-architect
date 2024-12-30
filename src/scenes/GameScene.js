@@ -1765,7 +1765,7 @@ export default class GameScene extends Phaser.Scene {
 
         // 给予奖励
         this.uiManager.updateGold(this.gold + monster.reward);
-        this.showRewardText(monster.sprite.x, monster.sprite.y, monster.reward);
+        // this.showRewardText(monster.sprite.x, monster.sprite.y, monster.reward);
 
         // 从数组中移除怪物
         const index = this.monsterManager.monsters.indexOf(monster);
@@ -1780,26 +1780,6 @@ export default class GameScene extends Phaser.Scene {
       targets: [monster.healthBar.background, monster.healthBar.bar],
       alpha: 0,
       duration: 600                    // 同步血条淡出时间
-    });
-  }
-
-  // 显示奖励文本
-  showRewardText(x, y, amount) {
-    const rewardText = this.add.text(x, y, `+${amount}`, {
-      fontSize: '20px',
-      fontFamily: 'Arial',
-      color: '#ffd700',
-      stroke: '#000000',
-      strokeThickness: 2
-    }).setOrigin(0.5);
-
-    this.tweens.add({
-      targets: rewardText,
-      y: y - 40,
-      alpha: 0,
-      duration: 1000,
-      ease: 'Power2',
-      onComplete: () => rewardText.destroy()
     });
   }
 
@@ -2010,9 +1990,9 @@ export default class GameScene extends Phaser.Scene {
   // 添加场景恢复方法
   resume() {
     // 确保所有UI元素状态正确
-    this.pauseMenu.setVisible(false);
+    this.pauseMenu?.setVisible(false);
     this.exitConfirm.setVisible(false);
-    // this.pauseText.setText('暂停');
+    this.pauseText?.setText('暂停');
 
     // 恢复游戏循环
     this.game.loop.wake();

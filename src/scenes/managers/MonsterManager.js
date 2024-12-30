@@ -196,10 +196,67 @@ export class MonsterManager {
 
       // 显示获得的经验值
       this.scene.showExpGain(monster.sprite.x, monster.sprite.y, expGain);
+      // 显示奖励文本
+      this.showRewardGold(monster.sprite.x, monster.sprite.y, monster.reward);
+
+      // 清理该怪物的连击记录
+      this.scene.towerManager.clearConsecutiveHits(monster.id);
 
       this.scene.playDeathAnimation(monster);
       return true; // 返回true表示怪物已死亡
     }
     return false; // 返回false表示物存活
   }
+
+  // 显示奖励金币
+  showRewardGold(x, y, amount) {
+    // 创建金币图标
+    const coinIcon = this.scene.add.circle(
+      x,
+      y,
+      scaleToDPR(12),
+      0xffd700
+    );
+
+    // 创建金币符号
+    const coinSymbol = this.scene.add.text(
+      x,
+      y,
+      '₿',
+      {
+        fontSize: `${scaleToDPR(16)}px`,
+        fontFamily: 'Arial',
+        color: '#000000'
+      }
+    ).setOrigin(0.5);
+
+    // 创建金币数量文本
+    const amountText = this.scene.add.text(
+      x + scaleToDPR(20),
+      y,
+      `+${amount}`,
+      {
+        fontSize: `${scaleToDPR(16)}px`,
+        fontFamily: 'Arial',
+        color: '#ffd700',
+        stroke: '#000000',
+        strokeThickness: scaleToDPR(2)
+      }
+    ).setOrigin(0, 0.5);
+
+    // 金币上升动画
+    this.scene.tweens.add({
+      targets: [coinIcon, coinSymbol, amountText],
+      y: y - scaleToDPR(40),
+      alpha: { from: 1, to: 0 },
+      duration: 1000,
+      ease: 'Power2',
+      onComplete: () => {
+        coinIcon.destroy();
+        coinSymbol.destroy();
+        amountText.destroy();
+      }
+    });
+  }
+
 }
