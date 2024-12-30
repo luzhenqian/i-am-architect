@@ -31,7 +31,8 @@ export class TowerManager {
       .setInteractive({ draggable: true }); // 设置为可交互和可拖拽
 
     // 创建血条
-    const healthBar = this.createHealthBar(
+    const healthBar = DisplayUtils.createHealthBar(
+      this.scene,
       x,
       y - this.scene.cellSize / 2,
       scaleToDPR(40),
@@ -238,28 +239,6 @@ export class TowerManager {
       this.scene.grid[row] &&
       this.scene.grid[row][col] &&
       !this.scene.grid[row][col].occupied;  // 检查格子是否已被占用
-  }
-
-  // 创建血条
-  createHealthBar(x, y, width, height) {
-    const background = this.scene.add.rectangle(x, y, width, height, 0x000000);
-    background.setOrigin(0.5, 0.5);
-
-    const bar = this.scene.add.rectangle(
-      x - width / 2,
-      y,
-      width,
-      height,
-      0x00ff00
-    );
-    bar.setOrigin(0, 0.5);
-
-    return {
-      background: background,
-      bar: bar,
-      width: width,
-      height: height,
-    };
   }
 
   // 创建对话气泡

@@ -1,5 +1,5 @@
 import Phaser from 'phaser';
-import { scaleToDPR } from '../shared/utils/DisplayUtils';
+import { DisplayUtils, scaleToDPR } from '../shared/utils/DisplayUtils';
 import { TowerManager } from './managers/TowerManager';
 import { MonsterManager } from './managers/MonsterManager';
 import { ConfigManager } from '../config/ConfigManager';
@@ -1748,7 +1748,8 @@ export default class GameScene extends Phaser.Scene {
     };
 
     // 创建血条 - 调整Y轴位置，使其更贴近怪物
-    monster.healthBar = this.createHealthBar(
+    monster.healthBar = DisplayUtils.createHealthBar(
+      this,
       portal.x,
       portal.y - scaleToDPR(20), // 调整血条位置，使其更贴近怪物
       scaleToDPR(30), // 减血条宽度
@@ -1884,29 +1885,6 @@ export default class GameScene extends Phaser.Scene {
       col >= 0 && col < this.gridSize.cols;
   }
 
-  // 添加创建血条方法
-  createHealthBar(x, y, width, height, isMonster = false) {
-    const background = this.add.rectangle(x, y, width, height, 0x000000);
-    background.setOrigin(0.5, 0.5);
-
-    const bar = this.add.rectangle(
-      x - width / 2,
-      y,
-      width,
-      height,
-      isMonster ? 0xff0000 : 0x00ff00
-    );
-    bar.setOrigin(0, 0.5);
-
-    return {
-      background: background,
-      bar: bar,
-      width: width,
-      height: height,
-      isMonster: isMonster
-    };
-  }
-
   // 更新血条的方法
   updateHealthBar(healthBar, percentage) {
     if (healthBar && healthBar.bar) {
@@ -1953,7 +1931,8 @@ export default class GameScene extends Phaser.Scene {
     monster.sprite.setDisplaySize(scaleToDPR(40), scaleToDPR(40));
 
     // 创建血条并定位到怪物上方
-    monster.healthBar = this.createHealthBar(
+    monster.healthBar = DisplayUtils.createHealthBar(
+      this,
       path[0].x,
       path[0].y - 25, // 位于怪物上方
       scaleToDPR(40), // 血条宽度
