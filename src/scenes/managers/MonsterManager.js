@@ -1,5 +1,5 @@
 import Phaser from 'phaser';
-import { scaleToDPR } from '../../shared/utils/DisplayUtils';
+import { DisplayUtils, scaleToDPR } from '../../shared/utils/DisplayUtils';
 
 export class MonsterManager {
   constructor(scene) {
@@ -107,7 +107,7 @@ export class MonsterManager {
       this.scene.updateHealthBar(tower.healthBar, healthPercentage);
 
       // 显示伤害数字
-      this.scene.showDamageNumber(tower.sprite.x, tower.sprite.y, damage);
+      DisplayUtils.createDamageNumber(this.scene, tower.sprite.x, tower.sprite.y, damage, 0xff4400);
 
       // 检查防御塔是否被摧毁
       if (tower.health <= 0) {

@@ -1961,7 +1961,7 @@ export default class GameScene extends Phaser.Scene {
     this.updateHealthBar(monster.healthBar, healthPercentage);
 
     // 显示伤害数字
-    this.showDamageNumber(monster.sprite.x, monster.sprite.y, actualDamage);
+    DisplayUtils.createDamageNumber(this, monster.sprite.x, monster.sprite.y, actualDamage, 0xff4400);
 
     // 检查是否死亡
     if (monster.health <= 0 && !monster.isDying) {
@@ -2089,26 +2089,6 @@ export default class GameScene extends Phaser.Scene {
         glow.destroy();
         particles.destroy();
       }
-    });
-  }
-
-  // 显示伤害数字
-  showDamageNumber(x, y, damage) {
-    const damageText = this.add.text(x, y - scaleToDPR(20), `-${damage}`, {
-      fontSize: `${scaleToDPR(20)}px`,
-      fontFamily: 'Arial',
-      color: '#ff0000',
-      stroke: '#000000',
-      strokeThickness: scaleToDPR(2)
-    }).setOrigin(0.5);
-
-    this.tweens.add({
-      targets: damageText,
-      y: y - scaleToDPR(50),
-      alpha: 0,
-      duration: 1000,
-      ease: 'Power2',
-      onComplete: () => damageText.destroy()
     });
   }
 

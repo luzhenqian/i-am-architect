@@ -4,7 +4,6 @@ import { scaleToDPR } from './DisplayUtils';
 export class EffectUtils {
   // 创建攻击特效
   static createAttackEffect(scene, source, target, color = 0x00ff00) {
-    console.log('createAttackEffect', source, target, color);
     const towerType = scene.config.towerConfig.towerTypes.find(t => t.key === source.type);
     switch (towerType.key) {
       case 'code_warrior':

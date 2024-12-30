@@ -409,12 +409,7 @@ export class TowerManager {
             const damage = Math.max(1, Math.floor(baseDamage * damageRatio));
 
             this.scene.damageMonster(targetMonster, damage);
-            this.showDamageNumber(
-              targetMonster.sprite.x,
-              targetMonster.sprite.y,
-              damage,
-              0xff4400
-            );
+            DisplayUtils.createDamageNumber(this.scene, targetMonster.sprite.x, targetMonster.sprite.y, damage, 0xff4400);
           }
         });
 
@@ -429,11 +424,6 @@ export class TowerManager {
 
         return this.scene.damageMonster(monster, defaultDamage);
     }
-  }
-
-  // 显示伤害数字
-  showDamageNumber(x, y, amount, color = 0xff0000) {
-    DisplayUtils.createDamageNumber(this.scene, x, y, amount, color);
   }
 
   // 添加查找目标的函数
