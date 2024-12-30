@@ -2,7 +2,9 @@ import Phaser from 'phaser';
 import { DisplayUtils, scaleToDPR } from '../shared/utils/DisplayUtils';
 import { TowerManager } from './managers/TowerManager';
 import { MonsterManager } from './managers/MonsterManager';
+import { UIManager } from './managers/UIManager';
 import { ConfigManager } from '../config/ConfigManager';
+import { SoundUtils } from '../shared/utils/SoundUtils';
 
 export default class GameScene extends Phaser.Scene {
   constructor(data) {
@@ -30,6 +32,7 @@ export default class GameScene extends Phaser.Scene {
 
     this.towerManager = new TowerManager(this);
     this.monsterManager = new MonsterManager(this);
+    this.uiManager = new UIManager(this);
   }
 
   init(data) {
@@ -80,14 +83,11 @@ export default class GameScene extends Phaser.Scene {
   }
 
   create() {
-    console.log('GameScene create started');
-
     // 在create方法开始处添加背景音乐播放
-    this.bgMusic = this.sound.add('bgm', {
+    SoundUtils.playSound(this, 'bgm', {
       volume: 0.3,
       loop: true
     });
-    this.bgMusic.play();
 
     // 添加背景图
     this.add.image(0, 0, 'bg')
@@ -120,7 +120,7 @@ export default class GameScene extends Phaser.Scene {
     this.createTowerPanel();
 
     // 创建顶部信息栏背景
-    this.createTopBar();
+    this.uiManager.createTopBar();
 
     // 添加倒计时文本
     this.countdownText = this.add.text(
@@ -179,26 +179,6 @@ export default class GameScene extends Phaser.Scene {
     };
   }
 
-  // 创建底部面板
-  createBottomPanel() {
-    const panelHeight = scaleToDPR(120);
-    const scrollPanel = this.add.container(
-      0,
-      this.game.config.height - panelHeight
-    );
-    scrollPanel.setDepth(1000);
-
-    // 面板背景
-    const panelBg = this.add.rectangle(
-      0,
-      0,
-      this.game.config.width,
-      panelHeight,
-      0x000000,
-      0.8  // 设置半透明
-    ).setOrigin(0);
-  }
-
   update(time, delta) {
     // 只在非拖拽状态下更新游戏逻辑
     if (!this.isDragging) {
@@ -213,139 +193,6 @@ export default class GameScene extends Phaser.Scene {
       // 更新波次进度
       this.updateWaveProgress();
     }
-  }
-
-  // 创建顶部信息栏背景
-  createTopBar() {
-    const topBarHeight = scaleToDPR(60);
-    const depth = 2000;
-
-    // 创建顶部栏背景并设置深度和半透明
-    const topBar = this.add.rectangle(0, 0, this.game.config.width, topBarHeight, 0x333333)
-      .setOrigin(0, 0)
-      .setAlpha(0.1) // 降低不透明度
-      .setDepth(depth)
-      .setScrollFactor(0);
-
-    // 第一行 Y 坐标
-    const firstRowY = topBarHeight / 3;
-
-    // 左侧: 等级和经验条
-    const levelStartX = scaleToDPR(20);
-    const levelIcon = this.add.image(levelStartX, firstRowY, 'level')
-      .setDisplaySize(scaleToDPR(48), scaleToDPR(48))
-      .setDepth(depth + 5);
-
-    // 等级文字添加黑色描边以增加可读性
-    this.levelText = this.add.text(levelStartX, firstRowY, `${this.level || 1}`, {
-      fontSize: `${scaleToDPR(14)}px`,
-      fontFamily: 'Arial',
-      color: '#ffffff',
-      fontStyle: 'bold',
-      stroke: '#000000',      // 添加黑色描边
-      strokeThickness: 2      // 设置描边宽度
-    }).setOrigin(0.5).setDepth(depth + 6);
-
-    // 经验条背景
-    const expBarX = levelStartX + scaleToDPR(0);
-    const expBarBg = this.add.rectangle(
-      expBarX,
-      firstRowY,
-      scaleToDPR(100),
-      scaleToDPR(6),
-      0x333333,
-      0.8 // 设置半透明
-    ).setOrigin(0, 0.5).setDepth(depth + 1);
-
-    // 经验条
-    this.expBar = this.add.rectangle(
-      expBarX,
-      firstRowY,
-      scaleToDPR(100) * ((this.experience || 0) / (this.nextLevelExp || 100)),
-      scaleToDPR(6),
-      0x00ff00,
-      1 // 略微半透明
-    ).setOrigin(0, 0.5).setDepth(depth + 2);
-
-    // 中间: 金币
-    const coinX = this.game.config.width / 2 - scaleToDPR(0);
-    const coinIcon = this.add.image(coinX, firstRowY, 'coin')
-      .setDisplaySize(scaleToDPR(34), scaleToDPR(34))
-      .setDepth(depth);
-
-    // 增加金币文字的阴影以提高可读性
-    this.goldText = this.add.text(coinX + scaleToDPR(20), firstRowY, `${this.gold}`, {
-      fontSize: `${scaleToDPR(16)}px`,
-      fontFamily: 'Arial',
-      color: '#ffd700',
-      stroke: '#000000', // 添加描边
-      strokeThickness: 2 // 描边宽度
-    }).setOrigin(0, 0.5).setDepth(depth);
-
-    // 右侧: 波次文本
-    const waveX = this.game.config.width - scaleToDPR(20); // 改为距离右边20像素
-    this.waveText = this.add.text(waveX, firstRowY, `第 ${this.wave} 波`, {
-      fontSize: `${scaleToDPR(14)}px`,
-      fontFamily: 'Arial',
-      color: '#ffffff',
-      stroke: '#000000', // 添加描边
-      strokeThickness: 1 // 描边宽度
-    }).setOrigin(1, 0.5).setDepth(depth); // 改为右对齐(1, 0.5)
-
-    // 第二行只有暂停按钮 (右侧)
-    const secondRowY = topBarHeight * 2 / 3 + scaleToDPR(4);
-    const pauseButton = this.add.image(
-      this.game.config.width - scaleToDPR(30),
-      secondRowY,
-      'pause'
-    )
-      .setDisplaySize(scaleToDPR(32), scaleToDPR(32))
-      .setInteractive()
-      .setDepth(depth);
-
-    // 暂停按钮交互
-    pauseButton.on('pointerover', () => {
-      this.input.setDefaultCursor('pointer');
-    });
-
-    pauseButton.on('pointerout', () => {
-      this.input.setDefaultCursor('default');
-    });
-
-    pauseButton.on('pointerdown', () => {
-      this.showPauseDialog();
-    });
-
-    // 添加键盘ESC键暂停/继续功能
-    this.input.keyboard.on('keydown-ESC', () => {
-      this.showPauseDialog();
-    });
-
-    // 创建暂停菜单
-    this.createPauseMenu();
-
-    // 创建退出确认对话框
-    this.createExitConfirm();
-
-    // 确保暂停菜单和退出确认框在场景暂停时仍然可以交互
-    this.pauseMenu.setDepth(2000);
-    this.exitConfirm.setDepth(2000);
-
-    // 添加波次进度指示器
-    this.waveProgress = this.add.text(this.game.config.width - scaleToDPR(30), topBarHeight - scaleToDPR(10), '', {
-      fontSize: `${scaleToDPR(14)}px`,
-      fontFamily: 'Arial',
-      color: '#aaaaaa'
-    }).setOrigin(1, 1);
-
-    // 更新波次进度显示方法
-    this.updateWaveProgress = () => {
-      if (this.isWaveActive && this.monstersRemaining > 0) {
-        this.waveText.setText(`第 ${this.wave} 波 (${this.monstersRemaining})`);
-      } else {
-        this.waveText.setText(`第 ${this.wave} 波`);
-      }
-    };
   }
 
   // 游戏结束
@@ -1122,15 +969,16 @@ export default class GameScene extends Phaser.Scene {
     const totalWidth = towerTypes.length * spacing;
     const startX = spacing / 2;
 
+
     // 创建滚动条背景和滚动条
-    const scrollBarHeight = scaleToDPR(8);
+    const scrollBarHeight = scaleToDPR(4); // 减小滚动条高度，使其更细致
     const scrollBarBg = this.add.rectangle(
       0,
       panelHeight - scrollBarHeight - scaleToDPR(8),
       this.game.config.width,
       scrollBarHeight,
-      0x444444,
-      0.6
+      0x222222, // 更深的背景色
+      0.4 // 降低透明度
     ).setOrigin(0, 0);
     scrollPanel.add(scrollBarBg);
 
@@ -1140,10 +988,31 @@ export default class GameScene extends Phaser.Scene {
       panelHeight - scrollBarHeight - scaleToDPR(8),
       scrollBarWidth,
       scrollBarHeight,
-      0x00ff00,
-      0.8
+      0x4488ff, // 使用蓝色调
+      0.6 // 适当的透明度
     ).setOrigin(0, 0);
     scrollPanel.add(scrollBar);
+
+    // 添加发光效果
+    const scrollBarGlow = this.add.rectangle(
+      0,
+      panelHeight - scrollBarHeight - scaleToDPR(8),
+      scrollBarWidth,
+      scrollBarHeight,
+      0x4488ff,
+      0.2
+    ).setOrigin(0, 0);
+    scrollPanel.add(scrollBarGlow);
+
+    // 添加滚动条动画效果
+    this.tweens.add({
+      targets: scrollBarGlow,
+      alpha: { from: 0.2, to: 0.4 },
+      duration: 1000,
+      yoyo: true,
+      repeat: -1,
+      ease: 'Sine.easeInOut'
+    });
 
     // 定义新动条位置函数
     const updateScrollBar = (x) => {
@@ -1770,7 +1639,7 @@ export default class GameScene extends Phaser.Scene {
     }
 
     // 更新经验条
-    this.updateExpBar();
+    this.uiManager.updateExpBar();
   }
 
   // 升级方法
@@ -1782,19 +1651,10 @@ export default class GameScene extends Phaser.Scene {
     this.nextLevelExp = this.config.levelConfig.getNextLevelExp(this.level);
 
     // 更新等级显示
-    this.levelText.setText(`${this.level}`);
+    this.uiManager.levelText.setText(`${this.level}`);
 
     // 播放升级特效
     this.playLevelUpEffect();
-  }
-
-  // 更新经验条显示
-  updateExpBar() {
-    if (!this.expBar) return;
-
-    const progress = this.experience / this.nextLevelExp;
-    // 设置经验条的宽度
-    this.expBar.width = scaleToDPR(100) * progress;
   }
 
   // 显示获得经验值的文本
@@ -1821,8 +1681,8 @@ export default class GameScene extends Phaser.Scene {
   playLevelUpEffect() {
     // 创建升级文本
     const levelUpText = this.add.text(
-      this.levelText.x,
-      this.levelText.y,
+      this.uiManager.levelText.x,
+      this.uiManager.levelText.y,
       'LEVEL UP!',
       {
         fontSize: `${scaleToDPR(24)}px`,
@@ -1835,8 +1695,8 @@ export default class GameScene extends Phaser.Scene {
 
     // 创建发光效果
     const glow = this.add.circle(
-      this.levelText.x,
-      this.levelText.y,
+      this.uiManager.levelText.x,
+      this.uiManager.levelText.y,
       scaleToDPR(40),
       0xffff44,
       0.5
@@ -1844,8 +1704,8 @@ export default class GameScene extends Phaser.Scene {
 
     // 创建粒子效果
     const particles = this.add.particles(
-      this.levelText.x,
-      this.levelText.y,
+      this.uiManager.levelText.x,
+      this.uiManager.levelText.y,
       'particle',
       {
         speed: { min: scaleToDPR(100), max: scaleToDPR(200) },
@@ -1904,7 +1764,7 @@ export default class GameScene extends Phaser.Scene {
         monster.sprite.destroy();
 
         // 给予奖励
-        this.updateGold(this.gold + monster.reward);
+        this.uiManager.updateGold(this.gold + monster.reward);
         this.showRewardText(monster.sprite.x, monster.sprite.y, monster.reward);
 
         // 从数组中移除怪物
@@ -1962,9 +1822,9 @@ export default class GameScene extends Phaser.Scene {
   // 更新波次进度显示
   updateWaveProgress() {
     if (this.isWaveActive && this.monstersRemaining > 0) {
-      this.waveProgress.setText(`剩余: ${this.monstersRemaining}`);
+      this.uiManager.waveProgress.setText(`剩余: ${this.monstersRemaining}`);
     } else {
-      this.waveProgress.setText('准备就绪');
+      this.uiManager.waveProgress.setText('准备就绪');
     }
   }
 
@@ -1974,7 +1834,7 @@ export default class GameScene extends Phaser.Scene {
       // 继续游戏
       this.scene.resume();
       this.pauseMenu.setVisible(false);
-      this.pauseText.setText('暂停');
+      this.uiManager.pauseText.setText('暂停');
 
       // 恢复所有计时器事件
       if (this.monsterSpawnEvent) {
@@ -1990,7 +1850,7 @@ export default class GameScene extends Phaser.Scene {
       // 暂停游戏
       this.scene.pause();
       this.pauseMenu.setVisible(true);
-      this.pauseText.setText('已暂停');
+      this.uiManager.pauseText.setText('已暂停');
 
       // 暂停所有计时器事件
       if (this.monsterSpawnEvent) {
@@ -2262,7 +2122,7 @@ export default class GameScene extends Phaser.Scene {
   // 更新金币
   updateGold(amount) {
     this.gold = amount;
-    this.goldText.setText(`${this.gold}`);
+    this.uiManager.goldText.setText(`${this.gold}`);
     // 触发金币变化事件
     this.events.emit('goldChanged');
   }
@@ -2938,32 +2798,5 @@ export default class GameScene extends Phaser.Scene {
     if (this.monsterSpawnEvent) {
       this.monsterSpawnEvent.paused = true;
     }
-  }
-
-  // 创建阴影覆盖
-  createShadowOverlay() {
-    const topBarHeight = scaleToDPR(60);
-
-    // 设置阴影的深度为较低的值
-    const gradient = this.add.graphics()
-      .setDepth(0);
-
-    gradient.fillGradientStyle(
-      0x000000,
-      0x000000,
-      0x000000,
-      0x000000,
-      0.6,
-      0.6,
-      0,
-      0
-    );
-
-    gradient.fillRect(
-      0,
-      topBarHeight,
-      this.game.config.width,
-      this.game.config.height - topBarHeight
-    );
   }
 } 
