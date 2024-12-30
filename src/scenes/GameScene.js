@@ -1,32 +1,32 @@
 import Phaser from 'phaser';
-import { GameConfig } from '../config/GameConfig';
 import { scaleToDPR } from '../shared/utils';
-import { TowerManager } from './components/TowerManager';
-import { MonsterManager } from './components/MonsterManager';
+import { TowerManager } from './managers/TowerManager';
+import { MonsterManager } from './managers/MonsterManager';
+import { ConfigManager } from '../config/ConfigManager';
 
 export default class GameScene extends Phaser.Scene {
   constructor(data) {
     super({ key: 'GameScene' });
-    this.config = new GameConfig();
-    this.gridSize = this.config.gridSize;
-    this.cellSize = this.config.cellSize;
-    this.initialGold = this.config.initialGold;
-    this.gold = this.config.initialGold;
-    this.playerHealth = this.config.initialHealth;
+    this.config = ConfigManager.getInstance();
+    this.gridSize = this.config.gameConfig.gridSize;
+    this.cellSize = this.config.gameConfig.cellSize;
+    this.initialGold = this.config.gameConfig.initialGold;
+    this.gold = this.config.gameConfig.initialGold;
+    this.playerHealth = this.config.gameConfig.initialHealth;
     this.wave = 1;
     this.countdown = 3;
     this.isWaveActive = false;
     this.monsterReward = 25;
     this.monsterSpawnInterval = 2500;
-    this.monsterTypes = this.config.monsterTypes;
-    this.towerTypes = this.config.towerTypes;
+    this.monsterTypes = this.config.monsterConfig.monsterTypes;
+    this.towerTypes = this.config.towerConfig.towerTypes;
     this.lastAttackTime = {};
     this.codeBlocks = [];
     this.isGameOver = false;
     this.onBack = data?.onBack; // 保存回调函数
     this.level = 1;
     this.experience = 0;
-    this.nextLevelExp = this.config.levelExperience.getNextLevelExp(this.level);
+    this.nextLevelExp = this.config.levelConfig.getNextLevelExp(this.level);
 
     this.towerManager = new TowerManager(this);
     this.monsterManager = new MonsterManager(this);
@@ -42,12 +42,12 @@ export default class GameScene extends Phaser.Scene {
     this.load.setBaseURL('/');
 
     // 加载防御塔图片
-    this.config.towerTypes.forEach(tower => {
+    this.config.towerConfig.towerTypes.forEach(tower => {
       this.load.image(tower.key, tower.image);
     });
 
     // 加载怪物图片
-    this.config.monsterTypes.forEach(monster => {
+    this.config.monsterConfig.monsterTypes.forEach(monster => {
       this.load.image(monster.key, monster.image);
     });
 
@@ -63,7 +63,7 @@ export default class GameScene extends Phaser.Scene {
     // this.load.image('tower_base', 'assets/ui/tower_base.png');
     // 背景
     this.load.image('bg', 'assets/images/bg.png');
-    this.config.towerTypes.forEach(tower => {
+    this.config.towerConfig.towerTypes.forEach(tower => {
       // 只为有攻击能力的防御塔加载音效
       if (!['blockchain_node', 'firewall'].includes(tower.key)) {
         try {
@@ -2020,7 +2020,7 @@ export default class GameScene extends Phaser.Scene {
     this.experience -= this.nextLevelExp;
 
     // 计算下一级所需经验值
-    this.nextLevelExp = this.config.levelExperience.getNextLevelExp(this.level);
+    this.nextLevelExp = this.config.levelConfig.getNextLevelExp(this.level);
 
     // 更新等级显示
     this.levelText.setText(`${this.level}`);

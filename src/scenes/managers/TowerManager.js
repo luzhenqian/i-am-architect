@@ -11,7 +11,7 @@ export class TowerManager {
   place(row, col, towerType) {
     if (!this.canPlace(row, col)) return;
 
-    const tower = this.scene.towerTypes.find(t => t.key === towerType);
+    const tower = this.scene.config.towerConfig.towerTypes.find(t => t.key === towerType);
     if (!tower || this.scene.gold < tower.cost) return;
 
     // 扣除金币
@@ -59,7 +59,7 @@ export class TowerManager {
     this.addTowerDialogue(newTower);
 
     // 将每秒攻击次数转换为毫秒间隔
-    const towerConfig = this.scene.config.towerTypes.find(t => t.key === towerType);
+    const towerConfig = this.scene.config.towerConfig.towerTypes.find(t => t.key === towerType);
     newTower.attackInterval = Math.floor(1000 / towerConfig.attackSpeed);
 
     this.towers.push(newTower);
@@ -385,7 +385,7 @@ export class TowerManager {
   attackMonster(tower, monster) {
     if (!tower || !monster || monster.isDying) return;
 
-    const towerType = this.scene.towerTypes.find(t => t.key === tower.type);
+    const towerType = this.scene.config.towerConfig.towerTypes.find(t => t.key === tower.type);
 
     // 检查是否是不应该攻击的防御塔类型
     if (['debug_fairy', 'blockchain_node', 'firewall'].includes(towerType.key)) {
@@ -477,7 +477,7 @@ export class TowerManager {
 
   // 创建攻击效果
   createAttackEffect(tower, monster, color) {
-    const towerType = this.scene.towerTypes.find(t => t.key === tower.type);
+    const towerType = this.scene.config.towerConfig.towerTypes.find(t => t.key === tower.type);
 
     if (towerType.key === 'ai_sniper') {
       // AI狙击手的特殊攻击效果
@@ -879,7 +879,7 @@ export class TowerManager {
 
   // 添加查找目标的函数
   findTarget(tower) {
-    const towerType = this.scene.towerTypes.find(t => t.key === tower.type);
+    const towerType = this.scene.config.towerConfig.towerTypes.find(t => t.key === tower.type);
     const range = towerType.range * this.scene.cellSize;
     let nearestMonster = null;
     let shortestDistance = Infinity;
