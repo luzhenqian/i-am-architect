@@ -1,5 +1,5 @@
 import Phaser from 'phaser';
-import { scaleToDPR } from '../shared/utils';
+import { scaleToDPR } from '../shared/utils/DisplayUtils';
 import { TowerManager } from './managers/TowerManager';
 import { MonsterManager } from './managers/MonsterManager';
 import { ConfigManager } from '../config/ConfigManager';

@@ -1,5 +1,5 @@
 import Phaser from 'phaser';
-import { scaleToDPR } from '../../shared/utils';
+import { scaleToDPR } from '../../shared/utils/DisplayUtils';
 
 export class MonsterManager {
   constructor(scene) {
