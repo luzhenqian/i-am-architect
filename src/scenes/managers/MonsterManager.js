@@ -97,9 +97,9 @@ export class MonsterManager {
       // 调计算公式
       const baseDamage = monster.attack * 2; // 增加基础伤害
       const defense = tower.defense || 0;
-      const damage = Math.max(5, baseDamage - defense); // 确最小伤害为5
+      const damage = Math.max(5, baseDamage - defense); // 确保最小伤害为5
 
-      // 应伤害
+      // 计算防御塔实际受到的伤害
       tower.health -= damage;
 
       // 更新血条
@@ -165,5 +165,41 @@ export class MonsterManager {
       }
     });
     this.monsters = [];
+  }
+
+
+  // 受到伤害时更新血条
+  damage(monster, damage) {
+    if (!monster || monster.isDying) return false;
+
+    // 确保damage是数字
+    const damageAmount = Number(damage) || 0;
+
+    // 计算实际伤害（考虑防御力）
+    const actualDamage = Math.max(1, Math.floor(damageAmount - monster.defense));
+    monster.health = Math.max(0, monster.health - actualDamage);
+
+    // 更新血条
+    const healthPercentage = Math.max(0, monster.health / monster.maxHealth);
+    this.scene.updateHealthBar(monster.healthBar, healthPercentage);
+
+    // 显示伤害数字
+    DisplayUtils.createDamageNumber(this.scene, monster.sprite.x, monster.sprite.y, actualDamage, 0xff4400);
+
+    // 检查是否死亡
+    if (monster.health <= 0 && !monster.isDying) {
+      monster.isDying = true;
+
+      // 获得经验值
+      const expGain = monster.experience || 10; // 默认经验值为10
+      this.scene.addExperience(expGain);
+
+      // 显示获得的经验值
+      this.scene.showExpGain(monster.sprite.x, monster.sprite.y, expGain);
+
+      this.scene.playDeathAnimation(monster);
+      return true; // 返回true表示怪物已死亡
+    }
+    return false; // 返回false表示物存活
   }
 }

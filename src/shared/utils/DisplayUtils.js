@@ -62,6 +62,34 @@ export class DisplayUtils {
       onComplete: () => damageText.destroy()
     });
   }
+
+  // 创建治疗数字
+  static createHealNumber(scene, x, y, amount) {
+    const healText = scene.add.text(x, y - scaleToDPR(20), `+${amount}`, {
+      fontSize: `${scaleToDPR(20)}px`,
+      fontFamily: 'Arial',
+      color: '#00ff88',
+      stroke: '#003311',
+      strokeThickness: scaleToDPR(3),
+      shadow: {
+        offsetX: 1,
+        offsetY: 1,
+        color: '#003311',
+        blur: 3,
+        fill: true
+      }
+    }).setOrigin(0.5);
+
+    scene.tweens.add({
+      targets: healText,
+      y: y - scaleToDPR(50),
+      alpha: 0,
+      scale: { from: 1, to: 1.2 },
+      duration: 1000,
+      ease: 'Quad.out',
+      onComplete: () => healText.destroy()
+    });
+  }
 }
 
 // DPR缩放

@@ -33,7 +33,6 @@ export default class GameScene extends Phaser.Scene {
   }
 
   init(data) {
-    // 在 init 方法中获取回调函数
     this.onBack = data?.onBack;
   }
 
@@ -148,9 +147,6 @@ export default class GameScene extends Phaser.Scene {
       callbackScope: this,
       loop: true
     });
-
-    // 定义怪物路径
-    this.monsterPath = this.createMonsterPath();
 
     // 创建单的粒子纹理
     const graphics = this.add.graphics();
@@ -352,161 +348,6 @@ export default class GameScene extends Phaser.Scene {
     };
   }
 
-
-  // 在防御塔范围内寻找目标
-  findTargetInRange(tower) {
-    const towerX = tower.sprite.x;
-    const towerY = tower.sprite.y;
-    const rangeInPixels = tower.range * this.cellSize;
-
-    // 找到最近的怪物
-    return this.monsters.find(monster => {
-      const distance = Phaser.Math.Distance.Between(
-        towerX,
-        towerY,
-        monster.sprite.x,
-        monster.sprite.y
-      );
-      return distance <= rangeInPixels;
-    });
-  }
-
-  // 创建范围攻击效果
-  createAOEEffect(x, y, radius, color) {
-    // 创建爆炸圆圈
-    const circle = this.add.circle(x, y, radius, color, 0.2);
-
-    // 创建外圈
-    const ring = this.add.circle(x, y, radius, color, 0);
-    ring.setStrokeStyle(scaleToDPR(2), color, 1);
-
-    // 创建粒子效果
-    const particles = this.add.particles(0, 0, 'particle', {
-      x: x,
-      y: y,
-      speed: { min: scaleToDPR(30), max: scaleToDPR(100) },
-      angle: { min: 0, max: 360 },
-      scale: { start: 0.6, end: 0 },
-      blendMode: 'ADD',
-      lifespan: 600,
-      quantity: 15,
-      tint: color
-    });
-
-    // 动画效果
-    this.tweens.add({
-      targets: [circle, ring],
-      scale: { from: 0.2, to: 1 },
-      alpha: { from: 0.6, to: 0 },
-      duration: 600,
-      ease: 'Power2',
-      onComplete: () => {
-        circle.destroy();
-        ring.destroy();
-        particles.destroy();
-      }
-    });
-
-    // 波纹效果
-    for (let i = 0; i < 2; i++) {
-      const ripple = this.add.circle(x, y, radius, color, 0);
-      ripple.setStrokeStyle(scaleToDPR(2), color, 1);
-
-      this.tweens.add({
-        targets: ripple,
-        scale: { from: 0.3, to: 1 },
-        alpha: { from: 0.5, to: 0 },
-        delay: i * 200,
-        duration: 800,
-        ease: 'Power2',
-        onComplete: () => ripple.destroy()
-      });
-    }
-
-    // 添加闪光效果
-    const flash = this.add.circle(x, y, radius * 0.3, color, 1);
-    this.tweens.add({
-      targets: flash,
-      scale: { from: 0.5, to: 2 },
-      alpha: { from: 1, to: 0 },
-      duration: 300,
-      ease: 'Power2',
-      onComplete: () => flash.destroy()
-    });
-  }
-
-  // 显示治疗数字
-  showHealNumber(x, y, amount) {
-    const healText = this.add.text(x, y - scaleToDPR(20), `+${amount}`, {
-      fontSize: `${scaleToDPR(20)}px`,
-      fontFamily: 'Arial',
-      color: '#00ff88',
-      stroke: '#003311',
-      strokeThickness: scaleToDPR(3),
-      shadow: {
-        offsetX: 1,
-        offsetY: 1,
-        color: '#003311',
-        blur: 3,
-        fill: true
-      }
-    }).setOrigin(0.5);
-
-    this.tweens.add({
-      targets: healText,
-      y: y - scaleToDPR(50),
-      alpha: 0,
-      scale: { from: 1, to: 1.2 },
-      duration: 1000,
-      ease: 'Quad.out',
-      onComplete: () => healText.destroy()
-    });
-  }
-
-  // 寻找塔的目标
-  findTargetForTower(tower) {
-    if (!this.monsters || this.monsters.length === 0) return null;
-
-    return this.monsters.find(monster => {
-      if (!monster || !monster.sprite) return false;
-
-      const dx = monster.sprite.x - tower.sprite.x;
-      const dy = monster.sprite.y - tower.sprite.y;
-      const distance = Math.sqrt(dx * dx + dy * dy);
-
-      return distance <= (tower.range * this.cellSize);
-    });
-  }
-
-  // 创建子弹
-  createBullet(tower, target) {
-    const bullet = this.add.circle(
-      tower.sprite.x,
-      tower.sprite.y,
-      3,
-      0xff0000
-    );
-
-    this.bullets.push({
-      sprite: bullet,
-      target: target.sprite,
-      damage: tower.damage || 10
-    });
-  }
-
-  // 处理击中怪物
-  hitMonster(monster, damage) {
-    const monsterData = this.monsters.find(m => m.sprite === monster);
-    if (!monsterData) return;
-
-    monsterData.health -= damage;
-    if (monsterData.health <= 0) {
-      this.updateGold(this.gold + monsterData.reward);
-      monster.destroy();
-      this.monsters = this.monsters.filter(m => m.sprite !== monster);
-    }
-  }
-
   // 游戏结束
   gameOver() {
     this.scene.pause();
@@ -543,7 +384,6 @@ export default class GameScene extends Phaser.Scene {
       this.scene.restart();
     });
   }
-
 
   // 添加清理游戏数据的方法
   cleanupGameData() {
@@ -1250,6 +1090,7 @@ export default class GameScene extends Phaser.Scene {
     }
   }
 
+  // 创建塔面板
   createTowerPanel() {
     const towerTypes = this.towerTypes;
 
@@ -1624,6 +1465,7 @@ export default class GameScene extends Phaser.Scene {
     });
   }
 
+  // 屏幕坐标转换为网格坐标
   screenToGrid(x, y) {
     const relativeX = x - this.gridOffset.x;
     const relativeY = y - this.gridOffset.y;
@@ -1640,8 +1482,7 @@ export default class GameScene extends Phaser.Scene {
     return { row, col };
   }
 
-
-
+  // 开始倒计时
   startCountdown() {
     let count = 3;
 
@@ -1695,6 +1536,7 @@ export default class GameScene extends Phaser.Scene {
     });
   }
 
+  // 开始波次
   startWave() {
     if (this.isWaveActive) return;
 
@@ -1713,6 +1555,7 @@ export default class GameScene extends Phaser.Scene {
     });
   }
 
+  // 开始下一波
   startNextWave() {
     this.wave++;
     this.waveText.setText(`波次: ${this.wave}`);
@@ -1723,6 +1566,7 @@ export default class GameScene extends Phaser.Scene {
     });
   }
 
+  // 生成怪物
   spawnMonster() {
     const type = Phaser.Utils.Array.GetRandom(this.monsterTypes);
     const portal = Phaser.Utils.Array.GetRandom(this.portals);
@@ -1798,7 +1642,7 @@ export default class GameScene extends Phaser.Scene {
     });
   }
 
-  // 添加高亮方法
+  // 高亮有效格子
   highlightValidCell(row, col) {
     this.clearHighlight();
 
@@ -1818,7 +1662,7 @@ export default class GameScene extends Phaser.Scene {
     }
   }
 
-  // 清除高亮
+  // 清除高亮有效格子
   clearHighlight() {
     if (!this.grid) return;
 
@@ -1914,70 +1758,6 @@ export default class GameScene extends Phaser.Scene {
         healthBar.bar.setFillStyle(color);
       }
     }
-  }
-
-  // 在创建怪物时添加血
-  createMonster(type, path) {
-    const monster = {
-      sprite: this.add.image(path[0].x, path[0].y, type),
-      currentPoint: 0,
-      path: path,
-      health: 100, // 初始生命值
-      maxHealth: 100, // 设置大生命值
-      speed: 1
-    };
-
-    // 设置怪物图片大小
-    monster.sprite.setDisplaySize(scaleToDPR(40), scaleToDPR(40));
-
-    // 创建血条并定位到怪物上方
-    monster.healthBar = DisplayUtils.createHealthBar(
-      this,
-      path[0].x,
-      path[0].y - 25, // 位于怪物上方
-      scaleToDPR(40), // 血条宽度
-      scaleToDPR(4)   // 血条高度
-    );
-
-    // 将怪物添加到数组中
-    this.monsters.push(monster);
-
-    return monster;
-  }
-
-  // 在怪物受到伤害时更新血条
-  damageMonster(monster, damage) {
-    if (!monster || monster.isDying) return false;
-
-    // 确保damage是数字
-    const damageAmount = Number(damage) || 0;
-
-    // 计算实际伤害（考虑防御力）
-    const actualDamage = Math.max(1, Math.floor(damageAmount - monster.defense));
-    monster.health = Math.max(0, monster.health - actualDamage);
-
-    // 更新血条
-    const healthPercentage = Math.max(0, monster.health / monster.maxHealth);
-    this.updateHealthBar(monster.healthBar, healthPercentage);
-
-    // 显示伤害数字
-    DisplayUtils.createDamageNumber(this, monster.sprite.x, monster.sprite.y, actualDamage, 0xff4400);
-
-    // 检查是否死亡
-    if (monster.health <= 0 && !monster.isDying) {
-      monster.isDying = true;
-
-      // 获得经验值
-      const expGain = monster.experience || 10; // 默认经验值为10
-      this.addExperience(expGain);
-
-      // 显示获得的经验值
-      this.showExpGain(monster.sprite.x, monster.sprite.y, expGain);
-
-      this.playDeathAnimation(monster);
-      return true; // 返回true表示怪物已死亡
-    }
-    return false; // 返回false表示物存活
   }
 
   // 添加经验值方法
@@ -2177,11 +1957,6 @@ export default class GameScene extends Phaser.Scene {
       });
     }
     this.monsters = [];
-  }
-
-  // 创建怪物路径
-  createMonsterPath() {
-    return null;
   }
 
   // 更新波次进度显示
@@ -2428,6 +2203,7 @@ export default class GameScene extends Phaser.Scene {
     });
   }
 
+  // 塔拖动开始
   onTowerDragStart(tower, pointer) {
     // 只有当塔有攻击范围时才显示
     if (tower.towerType.attackType !== 'none' && tower.towerType.attackType !== 'mine') {
@@ -2443,6 +2219,7 @@ export default class GameScene extends Phaser.Scene {
     this.children.bringToTop(tower);
   }
 
+  // 塔拖动结束
   onTowerDragEnd(tower, pointer) {
     // 清除范围显示
     if (this.rangeCircle) {
@@ -2451,6 +2228,7 @@ export default class GameScene extends Phaser.Scene {
     }
   }
 
+  // 塔拖动
   onTowerDrag(tower, pointer) {
     tower.x = pointer.x;
     tower.y = pointer.y;
@@ -2462,7 +2240,7 @@ export default class GameScene extends Phaser.Scene {
     }
   }
 
-  // 添加新的方法来更新范围预览
+  // 更新范围预览
   updateRangePreview(x, y, range) {
     if (!this.rangePreview) return;
 
@@ -2481,7 +2259,7 @@ export default class GameScene extends Phaser.Scene {
     this.rangePreview.strokePath();
   }
 
-  // 修改更新金币显示的方法
+  // 更新金币
   updateGold(amount) {
     this.gold = amount;
     this.goldText.setText(`${this.gold}`);
@@ -3162,6 +2940,7 @@ export default class GameScene extends Phaser.Scene {
     }
   }
 
+  // 创建阴影覆盖
   createShadowOverlay() {
     const topBarHeight = scaleToDPR(60);
 

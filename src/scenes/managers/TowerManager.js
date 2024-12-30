@@ -408,7 +408,7 @@ export class TowerManager {
             const baseDamage = tower.attack || towerType.attack || 15;
             const damage = Math.max(1, Math.floor(baseDamage * damageRatio));
 
-            this.scene.damageMonster(targetMonster, damage);
+            this.scene.monsterManager.damage(targetMonster, damage);
             DisplayUtils.createDamageNumber(this.scene, targetMonster.sprite.x, targetMonster.sprite.y, damage, 0xff4400);
           }
         });
@@ -421,8 +421,7 @@ export class TowerManager {
         const defaultBaseDamage = tower.attack || towerType.attack || 10;
         const defaultMonsterDefense = monster.defense || 0;
         const defaultDamage = Math.max(1, Math.floor(defaultBaseDamage - defaultMonsterDefense));
-
-        return this.scene.damageMonster(monster, defaultDamage);
+        this.scene.monsterManager.damage(monster, defaultDamage);
     }
   }
 
@@ -546,7 +545,7 @@ export class TowerManager {
       this.scene.updateHealthBar(targetTower.healthBar, healthPercentage);
 
       // 显示治疗数字
-      this.scene.showHealNumber(targetTower.sprite.x, targetTower.sprite.y, healing);
+      DisplayUtils.createHealNumber(this.scene, targetTower.sprite.x, targetTower.sprite.y, healing);
 
       // 播放治疗音效
       SoundUtils.playSound(this.scene, 'debug_fairy_attack');
