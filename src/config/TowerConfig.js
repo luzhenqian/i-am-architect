@@ -57,7 +57,7 @@ export class TowerConfig extends BaseConfig {
       },
       {
         key: 'firewall',
-        name: '防火墙',
+        name: '防火墙卫士',
         image: 'assets/images/towers/firewall.png',
         level: 1,
         attack: 0,
@@ -154,6 +154,38 @@ export class TowerConfig extends BaseConfig {
           mineCount: 1
         },
         targetStrategy: 'none'
+      },
+      {
+        key: 'syntax_parser',
+        name: '语法解析器',
+        image: 'assets/images/towers/syntax_parser.png',
+        level: 1,
+        attack: 20,
+        defense: 12,
+        health: 90,
+        maxHealth: 90,
+        attackSpeed: 0.6,
+        range: 3,
+        cost: 175,
+        attackType: 'syntax',
+        effectColor: 0x4B0082,
+        description: '语法解析器是代码世界的语法守护者，能识别并纠正各种语法错误。它使用不同的编程符号进行攻击：{}进行代码块包围，()捕获目标，;终止进程，//注释掉bug，=赋予减益效果。',
+        criticalChance: 0.18,
+        criticalMultiplier: 1.7,
+        skill: {
+          name: '语法检查器',
+          description: '积累多个语法符号后触发代码审查，对目标造成语法错误伤害。不同符号组合产生不同效果。',
+          syntaxEffects: {
+            '{}': { type: 'block', value: 25 },     // 代码块包围，造成范围伤害
+            '()': { type: 'catch', duration: 2 },    // try-catch捕获，禁锢敌人
+            ';': { type: 'terminate', value: 40 },   // 进程终止，高额单体伤害
+            '//': { type: 'comment', value: 0.3 },   // 注释，降低目标属性
+            '=': { type: 'assign', duration: 3 }     // 赋值，施加持续减益
+          },
+          maxSyntax: 3,
+          compileBonus: 1.5  // 语法组合时效果提升50%
+        },
+        targetStrategy: 'highest_error'  // 优先攻击最危险的目标
       }
     ];
   }
