@@ -5,6 +5,7 @@ import { MonsterManager } from './managers/MonsterManager';
 import { UIManager } from './managers/UIManager';
 import { ConfigManager } from '../config/ConfigManager';
 import { SoundUtils } from '../shared/utils/SoundUtils';
+import CodeFixOverlay from '../components/CodeFixOverlay';
 
 export default class GameScene extends Phaser.Scene {
   constructor(data) {
@@ -33,6 +34,9 @@ export default class GameScene extends Phaser.Scene {
     this.towerManager = new TowerManager(this);
     this.monsterManager = new MonsterManager(this);
     this.uiManager = new UIManager(this);
+
+    // 初始化代码修复界面
+    this.codeFixOverlay = new CodeFixOverlay(this);
   }
 
   init(data) {
@@ -1403,6 +1407,15 @@ export default class GameScene extends Phaser.Scene {
   // 开始波次
   startWave() {
     if (this.isWaveActive) return;
+
+    // 检查是否需要触发代码修复场景
+    if (this.wave % 5 === 0) {
+      this.scene.pause();
+      // 替换原来的场景切换代码
+      this.codeFixOverlay.show(this.wave);
+      return;
+    }
+
     this.isWaveActive = true;
     // 根据波数调整怪物数量
     const baseMonsters = 3;
@@ -1433,7 +1446,7 @@ export default class GameScene extends Phaser.Scene {
     });
   }
 
-  // 修改 checkWaveCompletion 方法
+  // 检查波次完成
   checkWaveCompletion() {
     // 确保 monsterManager.monsters 存在且当前波次处于激活状态
     if (!this.monsterManager?.monsters || !this.isWaveActive) return;
@@ -1452,7 +1465,7 @@ export default class GameScene extends Phaser.Scene {
     }
   }
 
-  // 修改 prepareNextWave 方法
+  // 准备下一波
   prepareNextWave() {
     // 防止重复调用
     if (!this.isWaveActive && this.preparingNextWave) return;
@@ -1889,7 +1902,6 @@ export default class GameScene extends Phaser.Scene {
       this.uiManager.waveText.setText(`第 ${this.wave} 波`);
     } else {
       this.uiManager.waveProgress.setText(`准备就绪`);
-      this.uiManager.waveText.setText(`第 ${this.wave + 1} 波`);
     }
   }
 
@@ -2073,23 +2085,23 @@ export default class GameScene extends Phaser.Scene {
   }
 
   // 添加场景恢复方法
-  resume() {
-    // 确保所有UI元素状态正确
-    this.pauseMenu?.setVisible(false);
-    this.exitConfirm?.setVisible(false);
-    this.pauseText?.setText('暂停');
+  // resume() {
+  //   // 确保所有UI元素状态正确
+  //   this.pauseMenu?.setVisible(false);
+  //   this.exitConfirm?.setVisible(false);
+  //   this.pauseText?.setText('暂停');
 
-    // 恢复游戏循环
-    this.game.loop.wake();
+  //   // 恢复游戏循环
+  //   this.game.loop.wake();
 
-    // 恢复计时器
-    if (this.monsterSpawnEvent) {
-      this.monsterSpawnEvent.paused = false;
-    }
+  //   // 恢复计时器
+  //   if (this.monsterSpawnEvent) {
+  //     this.monsterSpawnEvent.paused = false;
+  //   }
 
-    // 恢复动画
-    this.tweens.resumeAll();
-  }
+  //   // 恢复动画
+  //   this.tweens.resumeAll();
+  // }
 
   // 添加场景清理方法
   shutdown() {
@@ -2106,6 +2118,9 @@ export default class GameScene extends Phaser.Scene {
 
     // 移除键盘事件监听
     this.input.keyboard.off('keydown-ESC');
+
+    // 清理代码修复界面
+    this.codeFixOverlay?.destroy();
   }
 
   // 添加显示返还金币的方法
@@ -2825,17 +2840,6 @@ export default class GameScene extends Phaser.Scene {
     this.scene.pause();
     if (this.monsterSpawnEvent) {
       this.monsterSpawnEvent.paused = true;
-    }
-  }
-
-  // 在怪物死亡时检查是否需要结束当前波次
-  onMonsterDeath(monster) {
-    // ... existing monster death code ...
-
-    // 检查是否所有怪物都已生成且被消灭
-    if (!this.monsterSpawnEvent?.getRepeatCount() &&
-      this.monsterManager.monsters.length === 0) {
-      this.checkWaveCompletion();
     }
   }
 } 

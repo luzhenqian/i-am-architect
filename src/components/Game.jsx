@@ -35,7 +35,7 @@ const Game = ({ onBack }) => {
       width: viewport.width,
       height: viewport.height,
       backgroundColor: '#1a1a1a',
-      scene: CustomGameScene,
+      scene: [CustomGameScene],
       physics: {
         default: 'arcade',
         arcade: {

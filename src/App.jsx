@@ -3,6 +3,7 @@ import MainMenu from './components/MainMenu';
 import Game from './components/Game';
 import Guide from './components/Guide';
 import Settings from './components/Settings';
+import CodeFixScreen from './components/CodeFixScreen';
 
 const App = () => {
   const [currentScreen, setCurrentScreen] = useState('menu');
@@ -25,6 +26,8 @@ const App = () => {
 
   return (
     <div className="min-h-screen bg-gray-900">
+      {/* <CodeFixScreen /> */}
+
       {currentScreen === 'menu' && (
         <MainMenu 
           onStartGame={handleStartGame}
