@@ -124,6 +124,8 @@ export class MonsterManager {
       monster.healthBar.background.y = monster.sprite.y - scaleToDPR(25); // 保持相同的偏移值
       monster.healthBar.bar.x = monster.sprite.x - monster.healthBar.width / 2;
       monster.healthBar.bar.y = monster.sprite.y - scaleToDPR(25); // 保持相同的偏移值
+      monster.healthBar.border.x = monster.sprite.x;
+      monster.healthBar.border.y = monster.sprite.y - scaleToDPR(25); // 保持相同的偏移值
     }
   }
 
@@ -161,6 +163,7 @@ export class MonsterManager {
         if (monster.healthBar) {
           monster.healthBar.background.destroy();
           monster.healthBar.bar.destroy();
+          monster.healthBar.border.destroy();
         }
       }
     });
@@ -168,41 +171,35 @@ export class MonsterManager {
   }
 
 
-  // 受到伤害时更新血条
+  // 受到伤害
   damage(monster, damage) {
     if (!monster || monster.isDying) return false;
-
     // 确保damage是数字
     const damageAmount = Number(damage) || 0;
-
     // 计算实际伤害（考虑防御力）
     const actualDamage = Math.max(1, Math.floor(damageAmount - monster.defense));
     monster.health = Math.max(0, monster.health - actualDamage);
-
     // 更新血条
     const healthPercentage = Math.max(0, monster.health / monster.maxHealth);
     this.scene.updateHealthBar(monster.healthBar, healthPercentage);
-
     // 显示伤害数字
     DisplayUtils.createDamageNumber(this.scene, monster.sprite.x, monster.sprite.y, actualDamage, 0xff4400);
 
     // 检查是否死亡
     if (monster.health <= 0 && !monster.isDying) {
       monster.isDying = true;
-
       // 获得经验值
       const expGain = monster.experience || 10; // 默认经验值为10
       this.scene.addExperience(expGain);
-
       // 显示获得的经验值
       this.scene.showExpGain(monster.sprite.x, monster.sprite.y, expGain);
-      // 显示奖励文本
+      // 显示奖励
       this.showRewardGold(monster.sprite.x, monster.sprite.y, monster.reward);
-
       // 清理该怪物的连击记录
       this.scene.towerManager.clearConsecutiveHits(monster.id);
-
       this.scene.playDeathAnimation(monster);
+      // 清除怪物
+      this.destroy(monster);
       return true; // 返回true表示怪物已死亡
     }
     return false; // 返回false表示物存活
@@ -259,4 +256,14 @@ export class MonsterManager {
     });
   }
 
+  // 销毁怪物
+  destroy(monster) {
+    // 清除血条
+    if (monster.healthBar) {
+      monster.healthBar.background.destroy();
+      monster.healthBar.bar.destroy();
+      monster.healthBar.border.destroy();
+    }
+    this.monsters = this.monsters.filter(m => m !== monster);
+  }
 }
