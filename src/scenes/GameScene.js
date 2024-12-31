@@ -140,24 +140,12 @@ export default class GameScene extends Phaser.Scene {
     // 开始游戏倒计时
     this.startCountdown();
 
-    // 添加
-    this.time.addEvent({
-      delay: 1000,
-      callback: this.spawnMonster,
-      callbackScope: this,
-      loop: true
-    });
-
     // 创建单的粒子纹理
     const graphics = this.add.graphics();
     graphics.fillStyle(0xffffff);
     graphics.fillCircle(scaleToDPR(4), scaleToDPR(4), scaleToDPR(4));
     graphics.generateTexture('particle', 8, 8);
     graphics.destroy();
-
-    // 保存波次计时器引用
-    this.waveTimer = null;
-    this.monsterSpawnEvent = null;
   }
 
   // 计算游戏尺寸
@@ -336,7 +324,7 @@ export default class GameScene extends Phaser.Scene {
     // 添加战争迷雾效果
     this.createFogOfWar(offsetX, this.gridOffset.y, gridWidth, gridHeight);
 
-    // 删除原有的绿色网格线，改用更柔和的颜色
+    // 网格线，改用更柔和的颜色
     const gridLines = this.add.graphics();
     gridLines.lineStyle(1, 0x333333, 0.1); // 使用深灰色的网格线
 
@@ -795,7 +783,7 @@ export default class GameScene extends Phaser.Scene {
 
       // 核心图片 - 移除setTint，保持原始颜色
       const core = this.add.image(x, y + spacing, 'core')
-        .setDisplaySize(this.cellSize * 0.35, this.cellSize * 0.35);
+        .setDisplaySize(this.cellSize * 0.5, this.cellSize * 0.5);
 
       // 能量粒子效果
       const particles = this.add.particles(x, y + spacing, 'particle', {
@@ -1391,6 +1379,13 @@ export default class GameScene extends Phaser.Scene {
               this.countdownText.setScale(1);
               this.countdownText.setAlpha(1);
 
+              // 保存波次计时器引用
+              this.waveTimer = null;
+              this.monsterSpawnEvent = null;
+
+              this.isWaveActive = false;
+              this.wave = 1;
+
               // 开始第一波
               this.startWave();
             }
@@ -1408,70 +1403,149 @@ export default class GameScene extends Phaser.Scene {
   // 开始波次
   startWave() {
     if (this.isWaveActive) return;
-
     this.isWaveActive = true;
-    this.monstersRemaining = 5 + Math.floor(this.wave * 1.5);
+    // 根据波数调整怪物数量
+    const baseMonsters = 3;
+    const monstersPerWave = 1;
+    this.monstersRemaining = baseMonsters + (this.wave - 1) * monstersPerWave;
+
+    // 根据波数调整生成间隔
+    const baseInterval = 2000;
+    const intervalReduction = 100;
+    this.monsterSpawnInterval = Math.max(
+      1000, // 最小间隔
+      baseInterval - (this.wave - 1) * intervalReduction
+    );
 
     // 更新波次进度显示
     this.updateWaveProgress();
 
-    // 创建并保存实时生成怪物的事件引用
+    // 创建并保存怪物生成事件
     this.monsterSpawnEvent = this.time.addEvent({
       delay: this.monsterSpawnInterval,
       callback: this.spawnMonster,
       callbackScope: this,
-      repeat: this.monstersRemaining - 1
+      repeat: this.monstersRemaining - 1,
+      onComplete: () => {
+        // 当所有怪物生成完毕后,等待它们被消灭
+        this.checkWaveCompletion();
+      }
     });
   }
 
-  // 开始下一波
-  startNextWave() {
-    this.wave++;
-    this.waveText.setText(`波次: ${this.wave}`);
+  // 修改 checkWaveCompletion 方法
+  checkWaveCompletion() {
+    // 确保 monsterManager.monsters 存在且当前波次处于激活状态
+    if (!this.monsterManager?.monsters || !this.isWaveActive) return;
 
-    // 保存波次计时器引用
-    this.waveTimer = this.time.delayedCall(3000, () => {
-      this.startWave();
+    if (this.monstersRemaining <= 0 && this.monsterManager.monsters.length === 0) {
+      // 立即设置 isWaveActive 为 false，防止重复触发
+      this.isWaveActive = false;
+      this.prepareNextWave();
+    } else if (this.isWaveActive) {
+      // 还有怪物存活或未生成完，继续检查
+      this.time.addEvent({
+        delay: 1000,
+        callback: () => this.checkWaveCompletion(),
+        callbackScope: this
+      });
+    }
+  }
+
+  // 修改 prepareNextWave 方法
+  prepareNextWave() {
+    // 防止重复调用
+    if (!this.isWaveActive && this.preparingNextWave) return;
+    this.preparingNextWave = true;
+    // 显示下一波即将开始的提示
+    const waveText = this.add.text(
+      this.game.config.width / 2,
+      this.game.config.height / 2,
+      `第 ${this.wave + 1} 波即将开始...`,
+      {
+        fontSize: `${scaleToDPR(32)}px`,
+        fontFamily: 'Arial',
+        color: '#ffffff',
+        stroke: '#000000',
+        strokeThickness: scaleToDPR(4)
+      }
+    ).setOrigin(0.5);
+
+    // 添加文字动画
+    this.tweens.add({
+      targets: waveText,
+      alpha: { from: 1, to: 0 },
+      duration: 3000,
+      ease: 'Power2',
+      onComplete: () => {
+        waveText.destroy();
+        // 开始下一波
+        this.wave++;
+        this.preparingNextWave = false;
+        this.startWave();
+      }
     });
   }
 
   // 生成怪物
   spawnMonster() {
-    const type = Phaser.Utils.Array.GetRandom(this.monsterTypes);
+    // 根据波数调整怪物类型的选择概率
+    let availableTypes = [...this.monsterTypes];
+
+    // 计算当前波次的难度系数
+    const waveDifficulty = Math.floor((this.wave - 1) / 5); // 每5波增加一次难度
+
+    // 根据难度调整怪物选择
+    if (waveDifficulty > 0) {
+      // 按level对怪物进行排序
+      availableTypes.sort((a, b) => a.level - b.level);
+
+      // 移除最简单的怪物
+      const removeCount = Math.min(waveDifficulty, Math.floor(availableTypes.length / 2));
+      availableTypes = availableTypes.slice(removeCount);
+    }
+
     const portal = Phaser.Utils.Array.GetRandom(this.portals);
+    const type = Phaser.Utils.Array.GetRandom(availableTypes);
+
+    // 计算波数加成
+    const waveBonus = 1 + (this.wave - 1) * 0.1; // 每波增加10%属性
 
     const monster = {
       sprite: this.add.image(portal.x, portal.y, type.key)
-        .setDisplaySize(this.cellSize * 0.6, this.cellSize * 0.6), // 将 0.8 改为 0.6，怪物更小
+        .setDisplaySize(this.cellSize * 0.6, this.cellSize * 0.6),
       type: type.key,
       column: portal.col,
       level: Number(type.level),
-      speed: Number(type.speed) * (1 + (this.wave - 1) * 0.05),
-      attack: Number(type.attack) * (1 + (this.wave - 1) * 0.05),
-      defense: Number(type.defense) * (1 + (this.wave - 1) * 0.05),
-      health: type.health * (1 + (this.wave - 1) * 0.05),
-      maxHealth: type.health * (1 + (this.wave - 1) * 0.05),
-      attackSpeed: Number(type.attackSpeed) * (1 + (this.wave - 1) * 0.05),
-      attackRange: Number(type.attackRange) * (1 + (this.wave - 1) * 0.05),
-      reward: Number(type.reward) * (1 + (this.wave - 1) * 0.05),
+      speed: Number(type.speed) * waveBonus,
+      attack: Number(type.attack) * waveBonus,
+      defense: Number(type.defense) * waveBonus,
+      health: type.health * waveBonus,
+      maxHealth: type.health * waveBonus,
+      attackSpeed: Number(type.attackSpeed) * waveBonus,
+      attackRange: Number(type.attackRange),
+      reward: Math.ceil(Number(type.reward) * (1 + (this.wave - 1) * 0.05)), // 奖励金币也随波数增加
       skill: type.skill,
       effects: [],
       lastSkillUse: 0,
       isDying: false
     };
 
-    // 创建血条 - 调整Y轴位置，使其更贴近怪物
+    // 创建血条
     monster.healthBar = DisplayUtils.createHealthBar(
       this,
       portal.x,
-      portal.y - scaleToDPR(20), // 调整血条位置，使其更贴近怪物
-      scaleToDPR(30), // 减血条宽度
-      scaleToDPR(3),  // 减小血条高度
+      portal.y - scaleToDPR(20),
+      scaleToDPR(30),
+      scaleToDPR(3),
       true
     );
 
     // 添加到怪物数组
     this.monsterManager.monsters.push(monster);
+
+    // 创建传送效果
+    this.createPortalEffect(portal, monster);
 
     return monster;
   }
@@ -1498,13 +1572,16 @@ export default class GameScene extends Phaser.Scene {
       }
     });
 
+    // 保存原始缩放值
+    const targetScale = monster.sprite.scale;
+
     // 怪物出现动画
     monster.sprite.setScale(0);
     monster.sprite.setAlpha(0);
 
     this.tweens.add({
       targets: monster.sprite,
-      scale: { from: 0, to: 1 },
+      scale: { from: 0, to: targetScale }, // 使用原始缩放值
       alpha: { from: 0, to: 1 },
       duration: 300,
       ease: 'Back.easeOut'
@@ -1742,19 +1819,19 @@ export default class GameScene extends Phaser.Scene {
       y: monster.sprite.y,
       speed: { min: 50, max: 150 },
       angle: { min: 0, max: 360 },
-      scale: { start: 0.8, end: 0 },    // 稍微调小粒子大小
+      scale: { start: 0.8, end: 0 },
       blendMode: 'ADD',
-      lifespan: 600,                    // 缩短粒子持续时间
-      quantity: 15,                     // 少粒子数量
+      lifespan: 600,
+      quantity: 15,
       tint: [0xff0000, 0xff6666, 0xffcccc]
     });
 
-    // 整死亡动画
+    // 整体死亡动画
     this.tweens.add({
       targets: monster.sprite,
       alpha: 0,
-      scale: 1.2,                      // 减小放大比例，从1.5改为1.2
-      duration: 600,                   // 缩短动画时间从800改为600
+      scale: 1.2,
+      duration: 600,
       ease: 'Power2',
       onComplete: () => {
         // 清理资源
@@ -1765,13 +1842,19 @@ export default class GameScene extends Phaser.Scene {
 
         // 给予奖励
         this.uiManager.updateGold(this.gold + monster.reward);
-        // this.showRewardText(monster.sprite.x, monster.sprite.y, monster.reward);
 
         // 从数组中移除怪物
         const index = this.monsterManager.monsters.indexOf(monster);
         if (index > -1) {
           this.monsterManager.monsters.splice(index, 1);
         }
+
+        // 更新波次进度
+        this.monstersRemaining--;
+        this.updateWaveProgress();
+
+        // 检查波次是否完成
+        this.checkWaveCompletion();
       }
     });
 
@@ -1779,7 +1862,7 @@ export default class GameScene extends Phaser.Scene {
     this.tweens.add({
       targets: [monster.healthBar.background, monster.healthBar.bar],
       alpha: 0,
-      duration: 600                    // 同步血条淡出时间
+      duration: 600
     });
   }
 
@@ -1803,8 +1886,10 @@ export default class GameScene extends Phaser.Scene {
   updateWaveProgress() {
     if (this.isWaveActive && this.monstersRemaining > 0) {
       this.uiManager.waveProgress.setText(`剩余: ${this.monstersRemaining}`);
+      this.uiManager.waveText.setText(`第 ${this.wave} 波`);
     } else {
-      this.uiManager.waveProgress.setText('准备就绪');
+      this.uiManager.waveProgress.setText(`准备就绪`);
+      this.uiManager.waveText.setText(`第 ${this.wave + 1} 波`);
     }
   }
 
@@ -2740,6 +2825,17 @@ export default class GameScene extends Phaser.Scene {
     this.scene.pause();
     if (this.monsterSpawnEvent) {
       this.monsterSpawnEvent.paused = true;
+    }
+  }
+
+  // 在怪物死亡时检查是否需要结束当前波次
+  onMonsterDeath(monster) {
+    // ... existing monster death code ...
+
+    // 检查是否所有怪物都已生成且被消灭
+    if (!this.monsterSpawnEvent?.getRepeatCount() &&
+      this.monsterManager.monsters.length === 0) {
+      this.checkWaveCompletion();
     }
   }
 } 
