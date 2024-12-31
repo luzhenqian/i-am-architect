@@ -8,6 +8,7 @@ export class TowerManager {
     this.scene = scene;
     this.towers = [];
     this.consecutiveHits = new Map(); // 记录连续命中次数
+    this.sniperCharges = new Map(); // 存储狙击手充能状态
   }
 
   // 放置防御塔
@@ -228,6 +229,21 @@ export class TowerManager {
 
       // 将定时器引用存储在塔的属性中，以便后续清理
       newTower.healingEvent = healingEvent;
+    }
+
+    if (towerType === 'ai_sniper') {
+      // 创建充能条
+      const chargeBar = DisplayUtils.createChargeBar(
+        this.scene,
+        x,
+        y + this.scene.cellSize / 2 - scaleToDPR(10),
+        scaleToDPR(40),
+        scaleToDPR(4),
+        0xffff00
+      );
+
+      newTower.chargeBar = chargeBar;
+      this.sniperCharges.set(newTower.id, 0); // 初始化充能层数
     }
 
     return newTower;
@@ -496,40 +512,61 @@ export class TowerManager {
     }
   }
 
+  // 处理AI狙击手的攻击
   handleAiSniperAttack(tower, monster) {
     const towerConfig = this.scene.config.towerConfig.getTowerByKey('ai_sniper');
     const skill = towerConfig.skill;
 
+    // 获取当前充能层数
+    let currentCharges = this.sniperCharges.get(tower.id) || 0;
+    let damage = tower.attack;
+
+    // 检查是否已经充满能量
+    if (currentCharges >= skill.maxShots) {
+      // 触发技能效果
+      damage *= skill.damageIncrementRatio;
+      currentCharges = 0; // 重置充能
+
+      // 显示暴击效果
+      DisplayUtils.createCriticalDamageNumber(
+        this.scene,
+        monster.sprite.x,
+        monster.sprite.y,
+        Math.floor(damage),
+        0xffff00
+      );
+
+      // 创建特殊技能效果
+      this.createSniperSkillEffect(tower, monster);
+    } else {
+      // 普通攻击，增加充能层数
+      currentCharges++;
+
+      // 普通攻击伤害显示
+      DisplayUtils.createDamageNumber(
+        this.scene,
+        monster.sprite.x,
+        monster.sprite.y,
+        Math.floor(damage),
+        0xffff00
+      );
+    }
+
     // 创建攻击特效
     EffectUtils.createAiSniperAttackEffect(this.scene, tower, monster, towerConfig.effectColor, () => {
-      // 计算是否触发暴击
-      const isCritical = Math.random() < skill.criticalChance;
+      // 更新充能层数
+      this.sniperCharges.set(tower.id, currentCharges);
 
-      // 计算伤害
-      let damage = tower.attack;
-      if (isCritical) {
-        damage *= skill.criticalMultiplier;
-
-        DisplayUtils.createCriticalDamageNumber(
-          this.scene,
-          monster.sprite.x,
-          monster.sprite.y,
-          Math.floor(damage)
-        );
-      } else {
-        DisplayUtils.createDamageNumber(
-          this.scene,
-          monster.sprite.x,
-          monster.sprite.y,
-          Math.floor(damage),
-          0x00ff00
-        );
+      // 更新充能条显示
+      if (tower.chargeBar) {
+        const chargeProgress = currentCharges / skill.maxShots;
+        DisplayUtils.updateChargeBar(tower.chargeBar, chargeProgress);
       }
 
+      // 造成伤害
       this.scene.monsterManager.damage(monster, damage);
     });
 
-    // 更新塔的最后攻击时间
     tower.lastAttackTime = this.scene.time.now;
   }
 
@@ -604,6 +641,57 @@ export class TowerManager {
       tower.healthBar.background.y = tower.sprite.y - this.cellSize / 2;
       tower.healthBar.bar.x = tower.sprite.x - tower.healthBar.background.width / 2;
       tower.healthBar.bar.y = tower.sprite.y - this.scene.cellSize / 2;
+      tower.healthBar.border.x = tower.sprite.x + scaleToDPR(2);
+      tower.healthBar.border.y = tower.sprite.y - this.cellSize / 2 + scaleToDPR(2);
+    }
+
+
+    // 更新充能条位置
+    if (tower.chargeBar && !tower.isDestroying) {
+      // 检查充能条组件是否都存在且有效
+      const chargeBarValid = tower.chargeBar.background &&
+        tower.chargeBar.bar &&
+        tower.chargeBar.border &&
+        !tower.chargeBar.background.destroyed &&
+        !tower.chargeBar.bar.destroyed &&
+        !tower.chargeBar.border.destroyed;
+
+      if (chargeBarValid) {
+        tower.chargeBar.background.x = tower.sprite.x;
+        tower.chargeBar.background.y = tower.sprite.y + this.scene.cellSize / 2 - scaleToDPR(10);
+        tower.chargeBar.bar.x = tower.sprite.x - tower.chargeBar.background.width / 2;
+        tower.chargeBar.bar.y = tower.sprite.y + this.scene.cellSize / 2 - scaleToDPR(10);
+        tower.chargeBar.border.x = tower.sprite.x + scaleToDPR(2);
+        tower.chargeBar.border.y = tower.sprite.y + this.scene.cellSize / 2 - scaleToDPR(10) + scaleToDPR(2);
+
+        // 更新分隔线位置
+        if (tower.chargeBar.lines && Array.isArray(tower.chargeBar.lines)) {
+          tower.chargeBar.lines.forEach((line, index) => {
+            // 检查line对象是否有效且未被销毁
+            if (line && !line.destroyed && line.setTo && typeof line.setTo === 'function') {
+              try {
+                const lineX = tower.sprite.x - tower.chargeBar.width / 2 + (tower.chargeBar.width / 5 * (index + 1));
+                line.setTo(
+                  lineX,
+                  tower.sprite.y + this.scene.cellSize / 2 - scaleToDPR(10) - tower.chargeBar.background.height / 2 + 4,
+                  lineX,
+                  tower.sprite.y + this.scene.cellSize / 2 - scaleToDPR(10) + tower.chargeBar.background.height / 2 + 8
+                );
+              } catch (error) {
+                console.warn('Failed to update charge bar line position:', error);
+                // 如果更新失败，尝试移除这条线
+                if (tower.chargeBar.lines[index]) {
+                  tower.chargeBar.lines[index].destroy();
+                  tower.chargeBar.lines[index] = null;
+                }
+              }
+            }
+          });
+
+          // 清理已销毁的线条
+          tower.chargeBar.lines = tower.chargeBar.lines.filter(line => line && !line.destroyed);
+        }
+      }
     }
   }
 
@@ -881,6 +969,7 @@ export class TowerManager {
         explosion.destroy();
         tower.healthBar.background.destroy();
         tower.healthBar.bar.destroy();
+        tower.healthBar.border.destroy();
         tower.sprite.destroy();
 
         // 从数组中移除防御塔
@@ -900,6 +989,17 @@ export class TowerManager {
       alpha: 0,
       duration: 500
     });
+
+    // 清理充能条
+    if (tower.chargeBar) {
+      tower.chargeBar.background.destroy();
+      tower.chargeBar.bar.destroy();
+      tower.chargeBar.border.destroy();
+      tower.chargeBar.lines.forEach(line => line.destroy());
+    }
+
+    // 清理充能状态
+    this.sniperCharges.delete(tower.id);
   }
 
   update(time, delta) {
@@ -915,6 +1015,25 @@ export class TowerManager {
           tower.lastAttackTime = currentTime;
         }
       }
+    });
+  }
+
+  // 添加狙击手技能特效方法
+  createSniperSkillEffect(tower, monster) {
+    // 创建闪光效果
+    const flash = this.scene.add.sprite(monster.sprite.x, monster.sprite.y, 'particle')
+      .setTint(0xffff00)
+      .setScale(2)
+      .setAlpha(0.8);
+
+    // 闪光动画
+    this.scene.tweens.add({
+      targets: flash,
+      scale: 0.5,
+      alpha: 0,
+      duration: 300,
+      ease: 'Power2',
+      onComplete: () => flash.destroy()
     });
   }
 }

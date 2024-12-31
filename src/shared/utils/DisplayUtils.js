@@ -1,6 +1,10 @@
 export class DisplayUtils {
   // 创建血条
   static createHealthBar(scene, x, y, width, height, isMonster = false) {
+    const borderWidth = scaleToDPR(2);
+    const border = scene.add.rectangle(x, y, width + borderWidth, height + borderWidth, 0x000000, borderWidth);
+    border.setOrigin(0.5, 0.5);
+
     const background = scene.add.rectangle(x, y, width, height, 0x000000);
     background.setOrigin(0.5, 0.5);
 
@@ -14,11 +18,12 @@ export class DisplayUtils {
     bar.setOrigin(0, 0.5);
 
     return {
-      background: background,
-      bar: bar,
-      width: width,
-      height: height,
-      isMonster: isMonster
+      border,
+      background,
+      bar,
+      width,
+      height,
+      isMonster
     };
   }
 
@@ -96,6 +101,47 @@ export class DisplayUtils {
       ease: 'Quad.out',
       onComplete: () => healText.destroy()
     });
+  }
+
+  // 添加创建充能条方法
+  static createChargeBar(scene, x, y, width, height, color = 0xffff00) {
+    const border = scene.add.rectangle(x, y, width + 4, height + 2, 0x000000, 1)
+      .setOrigin(0.5, 0.5);
+
+    const background = scene.add.rectangle(x, y, width, height, 0xffffff, 0.5)
+      .setOrigin(0.5, 0.5);
+
+    const bar = scene.add.rectangle(
+      x - width / 2,
+      y,
+      0,
+      height,
+      color,
+      1
+    ).setOrigin(0, 0.5);
+
+    // 添加分割线
+    const segments = 5; // 分成5段
+    const lines = [];
+    for (let i = 1; i < segments; i++) {
+      const lineX = x - width / 2 + (width / segments * i);
+      const line = scene.add.line(
+        0, 0,
+        lineX, y - height / 2 + 4,  // 上端点
+        lineX, y + height / 2 + 8,  // 下端点
+        0x000000,
+        1
+      ).setLineWidth(3);
+      lines.push(line);
+    }
+
+    return { background, bar, border, width, lines };
+  }
+
+  // 更新充能条方法
+  static updateChargeBar(chargeBar, progress) {
+    const width = chargeBar.width * Math.min(Math.max(progress, 0), 1);
+    chargeBar.bar.width = width;
   }
 }
 

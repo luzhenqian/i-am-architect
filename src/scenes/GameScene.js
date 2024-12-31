@@ -1079,7 +1079,7 @@ export default class GameScene extends Phaser.Scene {
       isTowerDrag = false;
     });
 
-    // 修改防御塔拖拽逻辑
+    // 防御塔拖拽逻辑
     towerTypes.forEach((tower, index) => {
       const x = startX + spacing * index;
       const y = panelHeight / 2;
@@ -1991,7 +1991,7 @@ export default class GameScene extends Phaser.Scene {
   resume() {
     // 确保所有UI元素状态正确
     this.pauseMenu?.setVisible(false);
-    this.exitConfirm.setVisible(false);
+    this.exitConfirm?.setVisible(false);
     this.pauseText?.setText('暂停');
 
     // 恢复游戏循环
@@ -2041,43 +2041,6 @@ export default class GameScene extends Phaser.Scene {
       ease: 'Power2',
       onComplete: () => refundText.destroy()
     });
-  }
-
-  // 塔拖动开始
-  onTowerDragStart(tower, pointer) {
-    // 只有当塔有攻击范围时才显示
-    if (tower.towerType.attackType !== 'none' && tower.towerType.attackType !== 'mine') {
-      this.rangeCircle = this.add.circle(
-        tower.x,
-        tower.y,
-        tower.towerType.range * this.cellSize,
-        0x00ff00,
-        0.2
-      );
-    }
-
-    this.children.bringToTop(tower);
-  }
-
-  // 塔拖动结束
-  onTowerDragEnd(tower, pointer) {
-    // 清除范围显示
-    if (this.rangeCircle) {
-      this.rangeCircle.destroy();
-      this.rangeCircle = null;
-    }
-  }
-
-  // 塔拖动
-  onTowerDrag(tower, pointer) {
-    tower.x = pointer.x;
-    tower.y = pointer.y;
-
-    // 更新范围显示的位置
-    if (this.rangeCircle) {
-      this.rangeCircle.x = pointer.x;
-      this.rangeCircle.y = pointer.y;
-    }
   }
 
   // 更新范围预览

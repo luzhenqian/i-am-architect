@@ -123,9 +123,9 @@ export class TowerConfig extends BaseConfig {
         criticalMultiplier: 2.5,
         skill: {
           name: '精准狙击',
-          description: '攻击时，有概率造成暴击，暴击伤害为正常伤害的 3 倍。',
-          criticalChance: 0.2,
-          criticalMultiplier: 3
+          description: '攻击时获得 1 层"狙击"效果，5 层后的下一次攻击造成 2 倍伤害。',
+          damageIncrementRatio: 2,// 伤害增加倍数
+          maxShots: 5, // 最大层数
         },
         targetStrategy: 'strongest'
       },

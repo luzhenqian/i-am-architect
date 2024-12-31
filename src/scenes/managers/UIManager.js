@@ -566,6 +566,5 @@ export class UIManager {
     if (this.scrollPanel) {
       this.scrollPanel.destroy();
     }
-    // 清理其他UI元素...
   }
 }
