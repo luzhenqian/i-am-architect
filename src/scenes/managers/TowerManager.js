@@ -494,6 +494,10 @@ export class TowerManager {
         this.handleAiSniperAttack(tower, monster);
         break;
 
+      case 'syntax_parser':
+        this.handleSyntaxParserAttack(tower, monster);
+        break;
+
       default:
         // 创建默认攻击特效，并在特效完成时处理伤害
         EffectUtils.createDefaultAttackEffect(this.scene, tower, monster, tower.attackColor || 0x00ff00, () => {
@@ -1034,6 +1038,189 @@ export class TowerManager {
       duration: 300,
       ease: 'Power2',
       onComplete: () => flash.destroy()
+    });
+  }
+
+  // 根据概率选择语法符号
+  selectSyntaxSymbol(probabilities) {
+    const rand = Math.random();
+    let cumulativeProbability = 0;
+    
+    for (const [symbol, probability] of Object.entries(probabilities)) {
+      cumulativeProbability += probability;
+      if (rand < cumulativeProbability) {
+        return symbol;
+      }
+    }
+    
+    return '{}'; // 默认返回代码块符号
+  }
+
+  // 应用代码块效果
+  applySyntaxBlockEffect(tower, monster, baseDamage, effect) {
+    const radius = this.scene.cellSize * effect.radius;
+    
+    // 对范围内的怪物造成伤害
+    this.scene.monsterManager.monsters.forEach(targetMonster => {
+      if (targetMonster.isDying) return;
+      
+      const distance = Phaser.Math.Distance.Between(
+        monster.sprite.x,
+        monster.sprite.y,
+        targetMonster.sprite.x,
+        targetMonster.sprite.y
+      );
+      
+      if (distance <= radius) {
+        const damage = Math.floor(baseDamage * effect.damageRatio);
+        this.scene.monsterManager.damage(targetMonster, damage);
+        
+        DisplayUtils.createDamageNumber(
+          this.scene,
+          targetMonster.sprite.x,
+          targetMonster.sprite.y,
+          damage,
+          0x4B0082
+        );
+      }
+    });
+    
+    // 显示范围指示器
+    this.showAOEIndicator(monster.sprite.x, monster.sprite.y, radius);
+  }
+
+  // 应用捕获效果
+  applySyntaxCatchEffect(monster, effect) {
+    // 设置怪物的减速状态
+    monster.speed *= effect.speedRatio;
+    
+    // 创建禁锢视觉效果
+    const catchCircle = this.scene.add.circle(
+      monster.sprite.x,
+      monster.sprite.y,
+      scaleToDPR(20),
+      0x4B0082,
+      0.3
+    );
+    
+    // 恢复速度的定时器
+    this.scene.time.delayedCall(effect.duration * 1000, () => {
+      monster.speed *= 1 / effect.speedRatio;
+      
+      // 清除视觉效果
+      this.scene.tweens.add({
+        targets: catchCircle,
+        alpha: 0,
+        duration: 200,
+        onComplete: () => catchCircle.destroy()
+      });
+    });
+  }
+
+  // 应用赋值效果
+  applySyntaxAssignEffect(monster, effect) {
+    // 降低怪物防御力
+    const originalDefense = monster.defense;
+    monster.defense *= effect.defenseRatio;
+    
+    // 创建减益效果指示器
+    const debuffIcon = this.scene.add.text(
+      monster.sprite.x,
+      monster.sprite.y - scaleToDPR(20),
+      '↓',
+      {
+        fontSize: `${scaleToDPR(16)}px`,
+        color: '#4B0082'
+      }
+    ).setOrigin(0.5);
+    
+    // 恢复防御力的定时器
+    this.scene.time.delayedCall(effect.duration * 1000, () => {
+      monster.defense = originalDefense;
+      
+      // 清除减益图标
+      this.scene.tweens.add({
+        targets: debuffIcon,
+        alpha: 0,
+        duration: 200,
+        onComplete: () => debuffIcon.destroy()
+      });
+    });
+  }
+
+  // 处理语法解析器的攻击
+  handleSyntaxParserAttack(tower, monster) {
+    // 创建攻击特效，并在特效完成时处理伤害
+    EffectUtils.createSyntaxParserAttackEffect(this.scene, tower, monster, tower.attackColor || 0x4B0082, () => {
+      // 获取语法解析器配置
+      const towerConfig = this.scene.config.towerConfig.getTowerByKey('syntax_parser');
+      const syntaxEffects = towerConfig.skill.syntaxEffects;
+      
+      // 根据概率选择语法符号
+      const symbol = this.selectSyntaxSymbol(syntaxEffects.probabilitys);
+      const effect = syntaxEffects[symbol];
+      
+      // 计算基础伤害
+      let damage = tower.attack || towerConfig.attack;
+      
+      // 根据不同符号应用不同效果
+      switch(symbol) {
+        case '{}':
+          // 代码块包围，造成范围伤害
+          this.applySyntaxBlockEffect(tower, monster, damage, effect);
+          break;
+          
+        case '()':
+          // 捕获效果，禁锢敌人
+          this.applySyntaxCatchEffect(monster, effect);
+          damage = Math.floor(damage * 0.8); // 降低直接伤害
+          break;
+          
+        case ';':
+          // 终止效果，高额单体伤害
+          damage = Math.floor(damage * effect.damageRatio);
+          DisplayUtils.createCriticalDamageNumber(
+            this.scene, 
+            monster.sprite.x, 
+            monster.sprite.y, 
+            damage,
+            0x4B0082
+          );
+          break;
+          
+        case '//':
+          // 注释效果，低概率秒杀
+          if (Math.random() < effect.probability) {
+            damage = monster.health;
+            DisplayUtils.createCriticalDamageNumber(
+              this.scene,
+              monster.sprite.x,
+              monster.sprite.y,
+              'KILL!',
+              0x4B0082
+            );
+          }
+          break;
+          
+        case '=':
+          // 赋值效果，降低防御
+          this.applySyntaxAssignEffect(monster, effect);
+          break;
+      }
+      
+      // 造成伤害
+      this.scene.monsterManager.damage(monster, damage);
+      
+      // 显示普通伤害数字
+      if (symbol !== ';' && symbol !== '//') {
+        DisplayUtils.createDamageNumber(
+          this.scene,
+          monster.sprite.x,
+          monster.sprite.y,
+          damage,
+          0x4B0082
+        );
+      }
     });
   }
 }

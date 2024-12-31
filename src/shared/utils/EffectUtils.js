@@ -12,6 +12,8 @@ export class EffectUtils {
         return EffectUtils.createAiSniperAttackEffect(scene, source, target, color);
       case 'algo_cannon':
         return EffectUtils.createAlgoCannonAttackEffect(scene, source, target, color);
+      case 'syntax_parser':
+        return EffectUtils.createSyntaxParserAttackEffect(scene, source, target, color);
       default:
         return EffectUtils.createDefaultAttackEffect(scene, source, target, color);
     }
@@ -590,5 +592,161 @@ export class EffectUtils {
       risingCoins,
       ripple
     };
+  }
+
+  // 创建语法解析器的攻击效果
+  static createSyntaxParserAttackEffect(scene, tower, monster, color = 0x4B0082, onHit) {
+    const startPos = { x: tower.sprite.x, y: tower.sprite.y };
+    const endPos = { x: monster.sprite.x, y: monster.sprite.y };
+
+    // 随机选择一个语法符号
+    const syntaxSymbols = ['{}', '()', ';', '//', '='];
+    const symbol = syntaxSymbols[Math.floor(Math.random() * syntaxSymbols.length)];
+
+    // 创建语法符号容器
+    const symbolContainer = scene.add.container(startPos.x, startPos.y);
+
+    // 创建符号文本
+    const symbolText = scene.add.text(0, 0, symbol, {
+      fontSize: `${scaleToDPR(24)}px`,
+      fontFamily: 'Consolas, monospace',
+      color: '#4B0082',
+      stroke: '#ffffff',
+      strokeThickness: scaleToDPR(2)
+    }).setOrigin(0.5);
+
+    // 添加发光效果
+    const glow = scene.add.rectangle(0, 0, 
+      symbolText.width + scaleToDPR(10), 
+      symbolText.height + scaleToDPR(10), 
+      0x4B0082, 0.3);
+    
+    symbolContainer.add([glow, symbolText]);
+
+    // 计算角度
+    const angle = Phaser.Math.Angle.Between(startPos.x, startPos.y, endPos.x, endPos.y);
+    symbolContainer.setRotation(angle);
+
+    // 创建语法轨迹粒子
+    const particles = scene.add.particles(startPos.x, startPos.y, 'particle', {
+      speed: { min: scaleToDPR(50), max: scaleToDPR(100) },
+      scale: { start: 0.3, end: 0 },
+      alpha: { start: 0.6, end: 0 },
+      tint: 0x4B0082,
+      blendMode: 'ADD',
+      lifespan: 400,
+      quantity: 2,
+      angle: {
+        min: Phaser.Math.RadToDeg(angle) - 15,
+        max: Phaser.Math.RadToDeg(angle) + 15
+      }
+    });
+
+    // 符号飞行动画
+    scene.tweens.add({
+      targets: symbolContainer,
+      x: endPos.x,
+      y: endPos.y,
+      duration: 500,
+      ease: 'Cubic.easeOut',
+      onComplete: () => {
+        if (onHit) onHit();
+
+        // 创建命中效果
+        let impactEffect;
+        switch(symbol) {
+          case '{}':
+            // 代码块包围效果
+            impactEffect = scene.add.circle(endPos.x, endPos.y, scaleToDPR(30), 0x4B0082, 0.3);
+            scene.tweens.add({
+              targets: impactEffect,
+              scale: 1.5,
+              alpha: 0,
+              duration: 400,
+              ease: 'Power2'
+            });
+            break;
+
+          case '()':
+            // 捕获效果 - 创建收缩圈
+            impactEffect = scene.add.circle(endPos.x, endPos.y, scaleToDPR(40), 0x4B0082, 0);
+            impactEffect.setStrokeStyle(scaleToDPR(2), 0x4B0082);
+            scene.tweens.add({
+              targets: impactEffect,
+              scale: 0.2,
+              alpha: 1,
+              duration: 300,
+              ease: 'Power2'
+            });
+            break;
+
+          case ';':
+            // 终止效果 - 十字闪光
+            impactEffect = scene.add.container(endPos.x, endPos.y);
+            const line1 = scene.add.rectangle(0, 0, scaleToDPR(40), scaleToDPR(4), 0x4B0082);
+            const line2 = scene.add.rectangle(0, 0, scaleToDPR(4), scaleToDPR(40), 0x4B0082);
+            impactEffect.add([line1, line2]);
+            scene.tweens.add({
+              targets: impactEffect,
+              scale: 1.5,
+              alpha: 0,
+              duration: 300,
+              ease: 'Power2'
+            });
+            break;
+
+          case '//':
+            // 注释效果 - 波浪线
+            impactEffect = scene.add.graphics();
+            impactEffect.lineStyle(scaleToDPR(2), 0x4B0082, 1);
+            const wavePoints = [];
+            for (let i = 0; i <= 10; i++) {
+              wavePoints.push({
+                x: endPos.x - scaleToDPR(20) + i * scaleToDPR(4),
+                y: endPos.y + Math.sin(i * 0.5) * scaleToDPR(5)
+              });
+            }
+            impactEffect.strokePoints(wavePoints);
+            scene.tweens.add({
+              targets: impactEffect,
+              alpha: 0,
+              duration: 400
+            });
+            break;
+
+          case '=':
+            // 赋值效果 - 扩散环
+            impactEffect = [];
+            for (let i = 0; i < 2; i++) {
+              const ring = scene.add.circle(endPos.x, endPos.y, scaleToDPR(15 + i * 10), 0x4B0082, 0.5);
+              impactEffect.push(ring);
+              scene.tweens.add({
+                targets: ring,
+                scale: 2,
+                alpha: 0,
+                duration: 400,
+                delay: i * 100,
+                ease: 'Power2'
+              });
+            }
+            break;
+        }
+
+        // 清理效果
+        scene.time.delayedCall(500, () => {
+          if (Array.isArray(impactEffect)) {
+            impactEffect.forEach(effect => effect.destroy());
+          } else if (impactEffect) {
+            impactEffect.destroy();
+          }
+        });
+
+        // 清理符号和粒子
+        symbolContainer.destroy();
+        particles.destroy();
+      }
+    });
+
+    return { symbolContainer, particles };
   }
 } 
