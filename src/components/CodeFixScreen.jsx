@@ -12,14 +12,12 @@ const CodeFixScreen = ({ gameState, onComplete, onSkip }) => {
   const [dialogConfig, setDialogConfig] = useState({});
 
   const calculateRewards = (timeTaken, codeQuality) => {
-    const baseReward = 100 * (gameState.difficulty + 1);
-    const timeBonus = Math.max(0, 30 - timeTaken) * 10;
-    const qualityBonus = codeQuality * 50;
-    
+    const baseReward = 100 * (gameState.difficulty + 1);// 基础奖励
+    const timeBonus = Math.max(0, 30 - timeTaken) * 10;// 时间奖励
+    const qualityBonus = codeQuality * 50;// 代码质量
+
     return {
-      gold: Math.floor(baseReward * 0.5 + timeBonus),
-      health: Math.floor(baseReward * 0.1),
-      score: baseReward + timeBonus + qualityBonus
+      gold: Math.floor(baseReward * 0.5 + timeBonus)
     };
   };
 
@@ -45,9 +43,7 @@ const CodeFixScreen = ({ gameState, onComplete, onSkip }) => {
           title: '挑战成功',
           content: `恭喜你成功修复了这段远古代码！
             获得奖励：
-            金币 +${rewards.gold}
-            生命 +${rewards.health}
-            分数 +${rewards.score}`,
+            金币 +${rewards.gold}`,
           type: 'success',
           onConfirm: () => {
             setShowDialog(false);
@@ -78,10 +74,7 @@ const CodeFixScreen = ({ gameState, onComplete, onSkip }) => {
     const penalty = calculatePenalty();
     setDialogConfig({
       title: '确认跳过',
-      content: `跳过这个挑战将损失：
-        金币 -${penalty.gold}
-        生命 -${penalty.health}
-        分数 -${penalty.score}`,
+      content: `跳过这个挑战将失去奖励哦！`,
       type: 'warning',
       showCancel: true,
       onConfirm: () => {

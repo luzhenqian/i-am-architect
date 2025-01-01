@@ -20,7 +20,6 @@ export class LevelConfig extends BaseConfig {
       13: 4600,
       14: 5300,
       15: 6050,
-
     };
   }
 
