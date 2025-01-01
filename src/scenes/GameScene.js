@@ -7,6 +7,7 @@ import { ConfigManager } from '../config/ConfigManager';
 import { SoundUtils } from '../shared/utils/SoundUtils';
 import CodeFixOverlay from '../components/CodeFixOverlay';
 import { EffectUtils } from '../shared/utils/EffectUtils';
+import { PlayerSkillConfig } from '../config/PlayerSkillConfig';
 
 export default class GameScene extends Phaser.Scene {
   constructor(data) {
@@ -32,12 +33,16 @@ export default class GameScene extends Phaser.Scene {
     this.experience = 0;
     this.nextLevelExp = this.config.levelConfig.getNextLevelExp(this.level);
 
+    // 初始化 PlayerSkillConfig，直接传入 towerTypes
+    this.playerSkillConfig = new PlayerSkillConfig(this.towerTypes);
+
+    // 初始管理器
     this.towerManager = new TowerManager(this);
     this.monsterManager = new MonsterManager(this);
     this.uiManager = new UIManager(this);
+    this.codeFixOverlay = new CodeFixOverlay(this);    // 初始化代码修复界面
+    this.playerSkillConfig = new PlayerSkillConfig(this.towerTypes);    // 初始化 PlayerSkillConfig
 
-    // 初始化代码修复界面
-    this.codeFixOverlay = new CodeFixOverlay(this);
   }
 
   init(data) {
@@ -85,6 +90,16 @@ export default class GameScene extends Phaser.Scene {
 
     // 加载背景乐
     this.load.audio('bgm', `assets/music/bg.mp3`);
+
+    // 加载神秘技能图标
+    // this.load.image('mystery', 'assets/images/skills/mystery.png');
+    // 加载所有技能图标
+    this.playerSkillConfig.playerSkills.forEach(skill => {
+      console.log(skill);
+      if (skill.icon) {
+        this.load.image(skill.key, skill.icon);
+      }
+    });
   }
 
   create() {
@@ -99,7 +114,7 @@ export default class GameScene extends Phaser.Scene {
       .setOrigin(0)
       .setDisplaySize(this.game.config.width, this.game.config.height)
       .setDepth(-1)
-      .setAlpha(1); // 降低不透明度让背景不那么显眼
+      .setAlpha(1);
 
     // 创建游戏背景
     this.add.rectangle(0, 0, this.game.config.width, this.game.config.height, 0x1a1a1a)
@@ -142,15 +157,15 @@ export default class GameScene extends Phaser.Scene {
       }
     ).setOrigin(0.5).setDepth(1000).setVisible(false);
 
-    // 开始游戏倒计时
-    this.startCountdown();
-
     // 创建单的粒子纹理
     const graphics = this.add.graphics();
     graphics.fillStyle(0xffffff);
     graphics.fillCircle(scaleToDPR(4), scaleToDPR(4), scaleToDPR(4));
     graphics.generateTexture('particle', 8, 8);
     graphics.destroy();
+
+    // 开始游戏倒计时
+    this.startCountdown();
   }
 
   // 计算游戏尺寸
@@ -1574,7 +1589,7 @@ export default class GameScene extends Phaser.Scene {
       this.rangePreview.destroy();
     }
 
-    // 计算范围圆形的半径（格子数 * 格子���小）
+    // 计算范围圆形的半径（格子数 * 格子小）
     const radius = range * this.cellSize;
 
     // 创建图形对象
@@ -1657,6 +1672,10 @@ export default class GameScene extends Phaser.Scene {
 
     // 播放升级特效
     EffectUtils.playLevelUpEffect(this, this.uiManager);
+
+    // 暂停游戏并显示技能选择窗口
+    // this.scene.pause();
+    // this.showSkillSelectionDialog();
   }
 
   // 播放死亡动画
@@ -2112,9 +2131,9 @@ export default class GameScene extends Phaser.Scene {
 
     // 创建最终爆炸效果
     EffectUtils.createFinalExplosionEffect(this, () => {
-        // 爆炸效果完成后显示游戏结束对话框
-        this.showGameOverDialog();
-      });
+      // 爆炸效果完成后显示游戏结束对话框
+      this.showGameOverDialog();
+    });
 
     // 清理所有现有的怪物
     this.monsterManager.destroyAll();
@@ -2506,5 +2525,206 @@ export default class GameScene extends Phaser.Scene {
     if (this.monsterSpawnEvent) {
       this.monsterSpawnEvent.paused = true;
     }
+  }
+
+  // 添加显示技能选择窗口的方法
+  showSkillSelectionDialog() {
+    const width = this.game.config.width;
+    const height = this.game.config.height;
+
+    // 创建模糊背景
+    const overlay = this.add.rectangle(0, 0, width, height, 0x000000, 0.7)
+      .setOrigin(0)
+      .setDepth(1000);
+
+    // 调整对话框尺寸，使其更紧凑
+    const dialogWidth = Math.min(width * 0.95, scaleToDPR(500));  // 减小最大宽度
+    const dialogHeight = Math.min(height * 0.6, scaleToDPR(350)); // 减小最大高度
+    const dialogX = width / 2;
+    const dialogY = height / 2;
+
+    // 创建对话框背景
+    const dialogBg = this.add.rectangle(dialogX, dialogY, dialogWidth, dialogHeight, 0x1a1a1a)
+      .setDepth(1001);
+
+    // 内层背景
+    const innerBg = this.add.rectangle(dialogX, dialogY, dialogWidth - scaleToDPR(2), dialogHeight - scaleToDPR(2), 0x2a2a2a)
+      .setDepth(1001);
+
+    // 调整标题文本大小
+    const titleText = this.add.text(dialogX, dialogY - dialogHeight * 0.42,
+      '选择技能', {
+      fontSize: `${scaleToDPR(20)}px`, // 减小字体大小
+      fontFamily: 'Arial',
+      color: '#ffdd44',
+      fontStyle: 'bold'
+    })
+      .setOrigin(0.5)
+      .setDepth(1001);
+
+    // 获取技能选项
+    const skills = this.playerSkillConfig.drawUniqueSkills(2);
+    skills.push({
+      key: 'mystery',
+      name: '神秘技能',
+      description: '选择后随机获得一个技能',
+      rarity: 'EXPERT',
+      type: 'mystery'
+    });
+
+    // 调整卡片尺寸
+    const cardWidth = dialogWidth * 0.25;  // 减小卡片宽度
+    const cardHeight = dialogHeight * 0.65; // 减小卡片高度
+    const cardSpacing = cardWidth * 1.2;   // 减小卡片间距
+    const startX = dialogX - cardSpacing;
+
+    skills.forEach((skill, index) => {
+      const cardX = startX + cardSpacing * index;
+      const cardY = dialogY;
+
+      const rarityInfo = this.playerSkillConfig.getRarityInfo(skill.rarity);
+
+      // 创建卡片背景
+      const cardBg = this.add.rectangle(cardX, cardY, cardWidth, cardHeight, 0x333333)
+        .setStrokeStyle(scaleToDPR(1), parseInt(rarityInfo.color.replace('#', '0x')))
+        .setDepth(1002);  // 不要让卡片背景可交互
+
+      // 获取技能图标
+      const iconKey = skill.type === 'mystery' ?
+        'mystery_skill' : // 使用缓存的神秘技能图标key
+        skill.key; // 使用技能的key作为图片key
+
+      // 添加技能图标
+      const iconSize = cardWidth * 0.4;
+      const icon = this.add.image(cardX, cardY - cardHeight * 0.15, iconKey)
+        .setDisplaySize(iconSize, iconSize)
+        .setDepth(1002);
+
+      // 稀有度标题 - 调整位置到图标上方
+      const rarityText = this.add.text(cardX, cardY - cardHeight * 0.4,
+        rarityInfo.name, {
+        fontSize: `${scaleToDPR(10)}px`,
+        fontFamily: 'Arial',
+        color: rarityInfo.color,
+        fontStyle: 'bold',
+        align: 'center'
+      })
+        .setOrigin(0.5)
+        .setDepth(1002);
+
+      // 技能名称
+      const nameText = this.add.text(cardX, cardY + cardHeight * 0.1,
+        skill.name, {
+        fontSize: `${scaleToDPR(12)}px`,
+        fontFamily: 'Arial',
+        color: '#ffffff',
+        fontStyle: 'bold',
+        align: 'center',
+        wordWrap: { width: cardWidth * 0.85 },
+        lineSpacing: 4
+      })
+        .setOrigin(0.5)
+        .setDepth(1002);
+
+      // 创建属性文本
+      const createAttributeText = (skill) => {
+        if (skill.type === 'mystery') {
+          return '选择后随机获得一个技能';
+        }
+
+        const levelStats = skill.levelStats[0];
+        if (skill.type === 'attribute') {
+          return `提升 ${Math.round(levelStats.increment)}${skill.attribute === 'attackSpeed' || skill.attribute === 'criticalChance' ? '%' : ''}`;
+        } else if (skill.type === 'special' || skill.type === 'global') {
+          if (typeof levelStats.effect === 'number') {
+            return `效果: ${(levelStats.effect * 100).toFixed(0)}%`;
+          }
+          return `效果: ${levelStats.description}`;
+        }
+        return '';
+      };
+
+      // 技能描述部分改为属性列表显示
+      const attributeText = this.add.text(cardX, cardY + cardHeight * 0.05,
+        createAttributeText(skill), {
+        fontSize: `${scaleToDPR(12)}px`,
+        fontFamily: 'Arial',
+        color: '#cccccc',
+        align: 'center',
+        lineSpacing: 6
+      })
+        .setOrigin(0.5)
+        .setDepth(1002);
+
+      const descText = this.add.text(cardX, cardY + cardHeight * 0.1,
+        '', {
+        fontSize: `${scaleToDPR(12)}px`,
+        fontFamily: 'Arial',
+        color: '#cccccc',
+        align: 'center',
+        lineSpacing: 6
+      })
+        .setOrigin(0.5)
+        .setDepth(1002);
+
+      // 选择按钮 - 确保在最上层且可交互
+      const buttonBg = this.add.rectangle(cardX, cardY + cardHeight * 0.3,
+        cardWidth * 0.75,
+        scaleToDPR(32),
+        0x4488ff)
+        .setDepth(1003);  // 确保按钮在最上层
+
+      const buttonText = this.add.text(cardX, cardY + cardHeight * 0.3,
+        '选择', {
+        fontSize: `${scaleToDPR(13)}px`,
+        fontFamily: 'Arial',
+        color: '#ffffff',
+        fontStyle: 'bold'
+      })
+        .setOrigin(0.5)
+        .setDepth(1003);  // 确保文本在最上层
+
+      // 添加卡片交互效果
+      buttonBg
+        .on('pointerover', () => {
+          buttonBg.setScale(1.05);
+          buttonText.setScale(1.05);
+          this.input.setDefaultCursor('pointer');
+        })
+        .on('pointerout', () => {
+          buttonBg.setScale(1);
+          buttonText.setScale(1);
+          this.input.setDefaultCursor('default');
+        });
+
+      // 添加选择事件
+      buttonBg.on('pointerdown', () => {
+        console.log('Button clicked'); // 添加调试日志
+
+        let selectedSkill = skill;
+
+        if (skill.type === 'mystery') {
+          selectedSkill = this.playerSkillConfig.drawRandomSkill();
+        }
+
+        console.log('Selected skill:', selectedSkill);
+
+        // 销毁所有对话框元素
+        const elementsToDestroy = [
+          overlay, dialogBg, innerBg, titleText,
+          cardBg, rarityText, nameText, attributeText,
+          descText, buttonBg, buttonText, icon
+        ];
+
+        elementsToDestroy.forEach(element => {
+          if (element && element.destroy) {
+            element.destroy();
+          }
+        });
+
+        // 恢复游戏
+        this.scene.resume();
+      });
+    });
   }
 } 

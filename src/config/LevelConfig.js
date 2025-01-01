@@ -5,7 +5,7 @@ export class LevelConfig extends BaseConfig {
     super();
 
     this.levelExperience = {
-      1: 100,
+      1: 10,
       2: 200,
       3: 350,
       4: 550,
