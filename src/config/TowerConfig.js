@@ -15,7 +15,7 @@ export class TowerConfig extends BaseConfig {
         maxHealth: 100,
         attackSpeed: 0.8,
         range: 2,
-        cost: 100,
+        cost: 70,
         attackType: 'single',
         effectColor: 0x00ff00,
         description: '代码战士是程序世界的基础防线"小卫士"。它像个认真负责的战士，手握简单却实用的"验证枪"，但凡有Bug冒头，立马开枪清除，守护程序初始的纯净与顺畅。',

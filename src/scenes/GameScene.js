@@ -1540,8 +1540,11 @@ export default class GameScene extends Phaser.Scene {
     const portal = Phaser.Utils.Array.GetRandom(this.portals);
     const type = Phaser.Utils.Array.GetRandom(availableTypes);
 
-    // 计算波数加成
-    const waveBonus = 1 + (this.wave - 1) * 0.1; // 每波增加10%属性
+    // 计算不同属性的波数加成
+    const healthBonus = 1 + (this.wave - 1) * 0.2;    // 血量每波增加20%
+    const defenseBonus = 1 + (this.wave - 1) * 0.08;   // 防御每波增加0.08%
+    const attackBonus = 1 + (this.wave - 1) * 0.02;    // 攻击力每波增加2%
+    const attackSpeedBonus = 1 + (this.wave - 1) * 0.03; // 攻击频率每波增加3%
 
     const monster = {
       sprite: this.add.image(portal.x, portal.y, type.key)
@@ -1549,14 +1552,14 @@ export default class GameScene extends Phaser.Scene {
       type: type.key,
       column: portal.col,
       level: Number(type.level),
-      speed: Number(type.speed) * waveBonus,
-      attack: Number(type.attack) * waveBonus,
-      defense: Number(type.defense) * waveBonus,
-      health: type.health * waveBonus,
-      maxHealth: type.health * waveBonus,
-      attackSpeed: Number(type.attackSpeed) * waveBonus,
+      speed: Number(type.speed),
+      attack: Number(type.attack) * attackBonus,
+      defense: Number(type.defense) * defenseBonus,
+      health: type.health * healthBonus,
+      maxHealth: type.health * healthBonus,
+      attackSpeed: Number(type.attackSpeed) * attackSpeedBonus,
       attackRange: Number(type.attackRange),
-      reward: Math.ceil(Number(type.reward) * (1 + (this.wave - 1) * 0.05)), // 奖励金币也随波数增加
+      reward: Math.ceil(Number(type.reward) * (1 + (this.wave - 1) * 0.05)),
       skill: type.skill,
       effects: [],
       lastSkillUse: 0,
