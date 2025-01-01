@@ -134,7 +134,7 @@ export class TowerManager {
       });
 
       // 继续游戏
-      this.scene.resume('GameScene');
+      this.scene.scene.resume('GameScene');
 
       // 恢复正常深度
       towerSprite.setDepth(0);
@@ -163,8 +163,8 @@ export class TowerManager {
 
             // 恢复格子的原始颜色和边框
             const cell = this.scene.grid[row][col].cell;
-            cell.setFillStyle(0x333333);
-            cell.setStrokeStyle(scaleToDPR(1), 0x444444);
+            // cell.setFillStyle(0x333333);
+            // cell.setStrokeStyle(scaleToDPR(1), 0x444444);
 
             // 从数组中移除防御塔
             const index = this.towers.indexOf(newTower);
@@ -180,7 +180,7 @@ export class TowerManager {
             // 返还一部分金币
             const refund = Math.floor(tower.cost * 0.7);
             this.scene.updateGold(this.scene.gold + refund);
-            this.scene.showRefundText(pointer.x, pointer.y, refund);
+            DisplayUtils.showRefundText(this.scene, pointer.x, pointer.y, refund);
           }
         });
       } else {

@@ -170,7 +170,6 @@ export class MonsterManager {
     this.monsters = [];
   }
 
-
   // 受到伤害
   damage(monster, damage) {
     if (!monster || monster.isDying) return false;
@@ -192,7 +191,7 @@ export class MonsterManager {
       const expGain = monster.experience || 10; // 默认经验值为10
       this.scene.addExperience(expGain);
       // 显示获得的经验值
-      this.scene.showExpGain(monster.sprite.x, monster.sprite.y, expGain);
+      DisplayUtils.showExpGain(this.scene, monster.sprite.x, monster.sprite.y, expGain);
       // 显示奖励
       this.showRewardGold(monster.sprite.x, monster.sprite.y, monster.reward);
       // 清理该怪物的连击记录

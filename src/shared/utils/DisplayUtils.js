@@ -143,6 +143,101 @@ export class DisplayUtils {
     const width = chargeBar.width * Math.min(Math.max(progress, 0), 1);
     chargeBar.bar.width = width;
   }
+
+  // 添加金币不足提示
+  static showInsufficientFundsHint(scene, x, y) {
+    const text = scene.add.text(x, y - 30, '金币不足!', {
+      fontSize: `${scaleToDPR(16)}px`,
+      fontFamily: 'Arial, sans-serif',
+      color: '#ff0000',
+      padding: { x: 8, y: 4 },
+      resolution: 2
+    }).setOrigin(0.5);
+
+    // 添加动画效果
+    scene.tweens.add({
+      targets: text,
+      y: y - 60,
+      alpha: 0,
+      duration: 2000,
+      ease: 'Power2',
+      onComplete: () => text.destroy()
+    });
+  }
+
+  // 显示获得经验值的文本
+  static showExpGain(scene, x, y, amount) {
+    const expText = scene.add.text(x, y - scaleToDPR(40), `+${amount} EXP`, {
+      fontSize: `${scaleToDPR(16)}px`,
+      fontFamily: 'Arial',
+      color: '#44ff44',
+      stroke: '#000000',
+      strokeThickness: 2
+    }).setOrigin(0.5);
+
+    scene.tweens.add({
+      targets: expText,
+      y: y - scaleToDPR(80),
+      alpha: 0,
+      duration: 1500,
+      ease: 'Power2',
+      onComplete: () => expText.destroy()
+    });
+  }
+
+  // 显示返还金币的方法
+  static showRefundText(scene, x, y, amount) {
+    const refundText = scene.add.text(x, y, `返还: ${amount}`, {
+      fontSize: `${scaleToDPR(20)}px`,
+      fontFamily: 'Arial',
+      color: '#ffd700',
+      stroke: '#000000',
+      strokeThickness: scaleToDPR(2)
+    }).setOrigin(0.5);
+
+    scene.tweens.add({
+      targets: refundText,
+      y: y - scaleToDPR(50),
+      alpha: 0,
+      duration: 1000,
+      ease: 'Power2',
+      onComplete: () => refundText.destroy()
+    });
+  }
+
+  // 高亮有效格子
+  static highlightValidCell(scene, grid, row, col) {
+    DisplayUtils.clearHighlight(scene, grid);
+
+    if (row >= 0 && row < scene.gridSize.rows &&
+      col >= 0 && col < scene.gridSize.cols) {
+      const cell = grid[row][col];
+      if (cell.occupied) {
+        // 已占用格子显示红色
+        cell.cell.setStrokeStyle(scaleToDPR(2), 0xff0000);
+      } else if (scene.towerManager.canPlace(row, col)) {
+        // 可放置格子显示绿色
+        cell.cell.setStrokeStyle(scaleToDPR(2), 0x00ff00);
+      } else {
+        // 其他无效位置显示红色
+        cell.cell.setStrokeStyle(scaleToDPR(2), 0xff0000);
+      }
+    }
+  }
+
+  // 清除高亮有效格子
+  static clearHighlight(scene, grid) {
+    if (!grid) return;
+
+    for (let row = 0; row < scene.gridSize.rows; row++) {
+      for (let col = 0; col < scene.gridSize.cols; col++) {
+        if (grid[row] && grid[row][col]) {
+          grid[row][col].cell.setStrokeStyle(1, 0x444444);
+        }
+      }
+    }
+  }
+
 }
 
 // DPR缩放

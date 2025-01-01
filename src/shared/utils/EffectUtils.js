@@ -331,7 +331,7 @@ export class EffectUtils {
       onComplete: () => {
         // 触发命中回调
         if (onHit) onHit();
-        
+
         // 创建击中效果
         const impact = scene.add.circle(monster.sprite.x, monster.sprite.y, scaleToDPR(5), 0xffffff, 1);
 
@@ -482,24 +482,24 @@ export class EffectUtils {
   static createGoldGenerationEffect(scene, source, amount) {
     const startX = source.sprite.x;
     const startY = source.sprite.y - scaleToDPR(30);
-    
+
     // 创建金币容器
     const coinContainer = scene.add.container(startX, startY);
-    
+
     // 创建金币背景光晕
     const glow = scene.add.circle(0, 0, scaleToDPR(15), 0xffd700, 0.3);
-    
+
     // 创建金币主体
     const coinBody = scene.add.circle(0, 0, scaleToDPR(12), 0xffd700);
     const coinInner = scene.add.circle(0, 0, scaleToDPR(10), 0xffed4a);
-    
+
     // 创建比特币符号
     const btcSymbol = scene.add.text(0, 0, '₿', {
       fontSize: `${scaleToDPR(14)}px`,
       fontFamily: 'Arial',
       color: '#996515'
     }).setOrigin(0.5);
-    
+
     // 创建金额文本
     const amountText = scene.add.text(scaleToDPR(20), 0, `+${amount}`, {
       fontSize: `${scaleToDPR(16)}px`,
@@ -508,10 +508,10 @@ export class EffectUtils {
       stroke: '#000000',
       strokeThickness: scaleToDPR(3)
     }).setOrigin(0, 0.5);
-    
+
     // 添加所有元素到容器
     coinContainer.add([glow, coinBody, coinInner, btcSymbol, amountText]);
-    
+
     // 创建金币闪光粒子
     const sparkles = scene.add.particles(startX, startY, 'particle', {
       speed: { min: scaleToDPR(30), max: scaleToDPR(60) },
@@ -524,7 +524,7 @@ export class EffectUtils {
       frequency: 100,
       angle: { min: 0, max: 360 }
     });
-    
+
     // 创建上升的小金币粒子
     const risingCoins = scene.add.particles(startX, startY, 'particle', {
       speed: { min: scaleToDPR(40), max: scaleToDPR(80) },
@@ -538,7 +538,7 @@ export class EffectUtils {
       angle: { min: -30, max: 30 },
       gravityY: scaleToDPR(-50)
     });
-    
+
     // 金币脉冲动画
     scene.tweens.add({
       targets: [coinBody, coinInner],
@@ -549,7 +549,7 @@ export class EffectUtils {
       repeat: 2,
       ease: 'Sine.easeInOut'
     });
-    
+
     // 光晕呼吸动画
     scene.tweens.add({
       targets: glow,
@@ -560,7 +560,7 @@ export class EffectUtils {
       repeat: 2,
       ease: 'Sine.easeInOut'
     });
-    
+
     // 整体上升并淡出动画
     scene.tweens.add({
       targets: coinContainer,
@@ -574,7 +574,7 @@ export class EffectUtils {
         risingCoins.destroy();
       }
     });
-    
+
     // 创建波纹效果
     const ripple = scene.add.circle(startX, startY, scaleToDPR(20), 0xffd700, 0.3);
     scene.tweens.add({
@@ -616,11 +616,11 @@ export class EffectUtils {
     }).setOrigin(0.5);
 
     // 添加发光效果
-    const glow = scene.add.rectangle(0, 0, 
-      symbolText.width + scaleToDPR(10), 
-      symbolText.height + scaleToDPR(10), 
+    const glow = scene.add.rectangle(0, 0,
+      symbolText.width + scaleToDPR(10),
+      symbolText.height + scaleToDPR(10),
       0x4B0082, 0.3);
-    
+
     symbolContainer.add([glow, symbolText]);
 
     // 计算角度
@@ -654,7 +654,7 @@ export class EffectUtils {
 
         // 创建命中效果
         let impactEffect;
-        switch(symbol) {
+        switch (symbol) {
           case '{}':
             // 代码块包围效果
             impactEffect = scene.add.circle(endPos.x, endPos.y, scaleToDPR(30), 0x4B0082, 0.3);
@@ -748,5 +748,231 @@ export class EffectUtils {
     });
 
     return { symbolContainer, particles };
+  }
+
+  // 添加传送效果
+  static createPortalEffect(scene, portal, monster) {
+    // 创建闪光效果
+    const flash = scene.add.circle(portal.x, portal.y, scene.cellSize * 0.6, 0x4444ff, 0.8);
+
+    // 创建能量环效果
+    const ring = scene.add.circle(portal.x, portal.y, scene.cellSize * 0.4);
+    ring.setStrokeStyle(scaleToDPR(2), 0x4444ff);
+
+    // 添加动画效果
+    scene.tweens.add({
+      targets: [flash, ring],
+      scale: { from: 0.5, to: 1.5 },
+      alpha: { from: 0.8, to: 0 },
+      duration: 500,
+      ease: 'Power2',
+      onComplete: () => {
+        flash.destroy();
+        ring.destroy();
+      }
+    });
+
+    // 保存原始缩放值
+    const targetScale = monster.sprite.scale;
+
+    // 怪物出现动画
+    monster.sprite.setScale(0);
+    monster.sprite.setAlpha(0);
+
+    scene.tweens.add({
+      targets: monster.sprite,
+      scale: { from: 0, to: targetScale }, // 使用原始缩放值
+      alpha: { from: 0, to: 1 },
+      duration: 300,
+      ease: 'Back.easeOut'
+    });
+  }
+
+  // 创建爆炸效果
+  static createExplosionEffect(scene, x, y, color) {
+    // 创建闪光
+    const flash = scene.add.circle(x, y, scene.cellSize * 0.8, color, 0.8);
+
+    // 创建文字碎片效果
+    const fragments = [];
+    const fragmentCount = 8;
+    const fragmentText = ['{ ', ' }', '< ', ' >', '/ ', ' /', '[ ', ' ]'];
+
+    for (let i = 0; i < fragmentCount; i++) {
+      const angle = (i / fragmentCount) * Math.PI * 2;
+      const distance = scene.cellSize * 0.8;
+      const fragmentX = x + Math.cos(angle) * distance;
+      const fragmentY = y + Math.sin(angle) * distance;
+
+      const fragment = scene.add.text(x, y, fragmentText[i], {
+        fontSize: `${scaleToDPR(16)}px`,
+        fontFamily: 'Courier',
+        color: '#ffffff'
+      }).setOrigin(0.5);
+
+      fragments.push(fragment);
+
+      scene.tweens.add({
+        targets: fragment,
+        x: fragmentX,
+        y: fragmentY,
+        alpha: 0,
+        angle: Phaser.Math.Between(-180, 180),
+        duration: 1000,
+        ease: 'Power2',
+        onComplete: () => fragment.destroy()
+      });
+    }
+
+    // 爆炸动画
+    scene.tweens.add({
+      targets: flash,
+      scale: 2,
+      alpha: 0,
+      duration: 500,
+      ease: 'Power2',
+      onComplete: () => flash.destroy()
+    });
+
+    // 创建粒子爆炸效果
+    const particles = scene.add.particles(x, y, 'particle', {
+      speed: { min: scaleToDPR(100), max: scaleToDPR(200) },
+      angle: { min: 0, max: 360 },
+      scale: { start: 0.4, end: 0 },
+      blendMode: 'ADD',
+      lifespan: 800,
+      quantity: 20,
+      tint: [color, 0xffffff]
+    });
+
+    scene.time.delayedCall(800, () => {
+      particles.destroy();
+    });
+  }
+
+  // 创建最终爆炸效果
+  static createFinalExplosionEffect(scene, callback) {
+    const centerX = scene.game.config.width / 2;
+    const centerY = scene.game.config.height / 2;
+
+    // 创建中心爆炸闪光
+    const flash = scene.add.circle(centerX, centerY, 10, 0xffffff, 1);
+
+    // 创建多层扩散波
+    const waves = [];
+    const colors = [0xff8844, 0xff4444, 0xffaa44];
+
+    // 扩散波动画
+    scene.tweens.add({
+      targets: flash,
+      scale: { from: 1, to: 50 },
+      alpha: { from: 1, to: 0 },
+      duration: 1000,
+      ease: 'Power2',
+      onComplete: () => flash.destroy()
+    });
+
+    // 创建三层扩散波
+    for (let i = 0; i < 3; i++) {
+      const wave = scene.add.circle(centerX, centerY, 10, colors[i], 0.8);
+      waves.push(wave);
+
+      scene.tweens.add({
+        targets: wave,
+        scale: { from: 1, to: 40 },
+        alpha: { from: 0.8, to: 0 },
+        duration: 1500,
+        delay: i * 200,
+        ease: 'Power2',
+        onComplete: () => wave.destroy()
+      });
+    }
+
+    // 创建代码碎片效果
+    const fragments = ['ERROR', 'CRASH', 'FATAL', '404', 'BREAK'];
+    for (let i = 0; i < 8; i++) {
+      const angle = (i / 8) * Math.PI * 2;
+      const distance = 200;
+      const text = scene.add.text(centerX, centerY,
+        Phaser.Utils.Array.GetRandom(fragments), {
+        fontSize: `${scaleToDPR(20)}px`,
+        fontFamily: 'Courier',
+        color: '#ffffff',
+        fontStyle: 'bold'
+      }).setOrigin(0.5);
+
+      scene.tweens.add({
+        targets: text,
+        x: centerX + Math.cos(angle) * distance,
+        y: centerY + Math.sin(angle) * distance,
+        alpha: { from: 1, to: 0 },
+        angle: Phaser.Math.Between(-180, 180),
+        scale: { from: 1, to: 0.5 },
+        duration: 1000,
+        ease: 'Power2',
+        onComplete: () => text.destroy()
+      });
+    }
+
+    // 添加震动效果
+    scene.cameras.main.shake(1000, 0.01);
+
+    // 延迟调用回调函数
+    scene.time.delayedCall(1500, callback);
+  }
+
+  // 播放升级特效
+  static playLevelUpEffect(scene, uiManager) {
+    // 创建升级文本
+    const levelUpText = scene.add.text(
+      uiManager.levelText.x,
+      uiManager.levelText.y,
+      'LEVEL UP!',
+      {
+        fontSize: `${scaleToDPR(24)}px`,
+        fontFamily: 'Arial',
+        color: '#ffff44',
+        stroke: '#000000',
+        strokeThickness: 3
+      }
+    ).setOrigin(0.5);
+
+    // 创建发光效果
+    const glow = scene.add.circle(
+      uiManager.levelText.x,
+      uiManager.levelText.y,
+      scaleToDPR(40),
+      0xffff44,
+      0.5
+    );
+
+    // 创建粒子效果
+    const particles = scene.add.particles(
+      uiManager.levelText.x,
+      uiManager.levelText.y,
+      'particle',
+      {
+        speed: { min: scaleToDPR(100), max: scaleToDPR(200) },
+        scale: { start: 0.5, end: 0 },
+        alpha: { start: 1, end: 0 },
+        lifespan: 1000,
+        quantity: 20,
+        tint: 0xffff44
+      }
+    );
+
+    // 动画效果
+    scene.tweens.add({
+      targets: [levelUpText, glow],
+      alpha: 0,
+      scale: 2,
+      duration: 1000,
+      ease: 'Power2',
+      onComplete: () => {
+        levelUpText.destroy();
+        glow.destroy();
+        particles.destroy();
+      }
+    });
   }
 } 
