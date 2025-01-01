@@ -2,7 +2,7 @@
 src/
   scenes/
     GameScene.js         // 主场景类,负责组织和协调其他模块
-    components/         
+    managers/         
       TowerManager.js    // 防御塔管理
       MonsterManager.js  // 怪物管理  
       UIManager.js       // UI界面管理

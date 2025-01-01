@@ -975,4 +975,112 @@ export class EffectUtils {
       }
     });
   }
+
+  // 添加新的特效方法
+  static createPortalTransitionEffect(scene, onComplete) {
+    const centerX = scene.game.config.width / 2;
+    const centerY = scene.game.config.height / 2;
+
+    // 创建传送门容器
+    const portalContainer = scene.add.container(centerX, centerY).setDepth(9999);
+
+    // 创建黑色遮罩背景
+    const overlay = scene.add.rectangle(
+      -scene.game.config.width/2,
+      -scene.game.config.height/2,
+      scene.game.config.width,
+      scene.game.config.height,
+      0x1e1e1e, 0
+    );
+    portalContainer.add(overlay);
+
+    // 创建外圈二进制数字 - 减少数量，增加间距
+    const binaryRing = [];
+    const particleCount = 24; // 从48减少到24
+    for (let i = 0; i < particleCount; i++) {
+      const angle = (i / particleCount) * Math.PI * 2;
+      const radius = 220; // 增加半径
+      const x = Math.cos(angle) * radius;
+      const y = Math.sin(angle) * radius;
+      
+      const digit = Math.random() > 0.5 ? '1' : '0';
+      const particle = scene.add.text(x, y, digit, {
+        fontSize: `${scaleToDPR(18)}px`, // 增大字体
+        fontFamily: 'Consolas',
+        color: '#9cdcfe',
+        stroke: '#1e1e1e',
+        strokeThickness: 2
+      }).setOrigin(0.5).setAlpha(0);
+      
+      binaryRing.push(particle);
+      portalContainer.add(particle);
+    }
+
+    // 创建内圈二进制数字 - 减少数量，增加间距
+    const innerBinaryRing = [];
+    const innerParticleCount = 16; // 从32减少到16
+    for (let i = 0; i < innerParticleCount; i++) {
+      const angle = (i / innerParticleCount) * Math.PI * 2;
+      const radius = 160; // 调整半径
+      const x = Math.cos(angle) * radius;
+      const y = Math.sin(angle) * radius;
+      
+      const digit = Math.random() > 0.5 ? '1' : '0';
+      const particle = scene.add.text(x, y, digit, {
+        fontSize: `${scaleToDPR(16)}px`, // 增大字体
+        fontFamily: 'Consolas',
+        color: '#4fc1ff',
+        stroke: '#1e1e1e',
+        strokeThickness: 2
+      }).setOrigin(0.5).setAlpha(0);
+      
+      innerBinaryRing.push(particle);
+      portalContainer.add(particle);
+    }
+
+    // 动画序列
+    // 1. 逐个点亮外圈数字
+    binaryRing.forEach((particle, index) => {
+      scene.tweens.add({
+        targets: particle,
+        alpha: 0.9,
+        duration: 40, // 稍微放慢点亮速度
+        delay: index * 40,
+        ease: 'Power1'
+      });
+    });
+
+    // 2. 逐个点亮内圈数字
+    innerBinaryRing.forEach((particle, index) => {
+      scene.tweens.add({
+        targets: particle,
+        alpha: 0.9,
+        duration: 40,
+        delay: binaryRing.length * 40 + index * 40,
+        ease: 'Power1'
+      });
+    });
+
+    // 3. 全部点亮后的效果
+    scene.time.delayedCall(
+      (binaryRing.length + innerBinaryRing.length) * 40 + 300,
+      () => {
+        scene.cameras.main.flash(800, 30, 30, 30);
+        
+        scene.tweens.add({
+          targets: overlay,
+          alpha: 1,
+          duration: 800,
+          ease: 'Power2',
+          onComplete: () => {
+            portalContainer.destroy();
+            if (onComplete) onComplete();
+          }
+        });
+      }
+    );
+
+    // 添加轻微的相机震动
+    scene.cameras.main.shake(300, 0.001);
+  }
 } 

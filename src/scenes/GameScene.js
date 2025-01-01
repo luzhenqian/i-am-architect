@@ -1410,10 +1410,13 @@ export default class GameScene extends Phaser.Scene {
     if (this.isWaveActive) return;
 
     // 检查是否需要触发代码修复场景
-    if (this.wave % 5 === 0) {
-      this.scene.pause();
-      // 替换原来的场景切换代码
-      this.codeFixOverlay.show(this.wave);
+    if (this.wave % 4 === 0) {
+      // 先播放传送门特效
+      EffectUtils.createPortalTransitionEffect(this, () => {
+        // 特效完成后再暂停场景并显示代码修复界面
+        this.scene.pause();
+        this.codeFixOverlay.show(this.wave);
+      });
       return;
     }
 
