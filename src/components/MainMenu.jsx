@@ -29,7 +29,7 @@ const MainMenu = ({ onStartGame, onOpenGuide, onOpenSettings }) => {
         <img 
           src="/assets/images/game-title.png" 
           alt="我是架构师"
-          className="mb-40 w-64 drop-shadow-[0_0_8px_rgba(255,255,255,0.8)]"
+          className="mb-40 w-72 drop-shadow-[0_0_4px_rgba(255,255,255,0.8)]"
         />
         
         <div className="flex flex-col gap-6">
