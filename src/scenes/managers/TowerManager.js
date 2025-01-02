@@ -435,6 +435,9 @@ export class TowerManager {
     // 播放攻击音效
     SoundUtils.playSound(this.scene, `${tower.type}_attack`);
 
+    // 添加攻击动画效果
+    this.playTowerAttackAnimation(tower, monster);
+
     // 清理旧特效
     if (tower.currentEffect) {
       this.clearTowerEffects(tower);
@@ -1220,5 +1223,106 @@ export class TowerManager {
         );
       }
     });
+  }
+
+  // 防御塔攻击动画
+  playTowerAttackAnimation(tower, monster) {
+    const duration = 200; // 动画持续时间（毫秒）
+
+    // 获取当前的缩放比例
+    const currentScaleX = tower.sprite.scaleX;
+    const currentScaleY = tower.sprite.scaleY;
+
+    // 根据防御塔类型设置不同的动画效果
+    switch (tower.type) {
+      case 'algo_cannon':
+        // 炮塔后退效果 + 旋转
+        this.scene.tweens.add({
+          targets: tower.sprite,
+          scaleX: currentScaleX * 0.9, // 水平压缩
+          scaleY: currentScaleY * 1.1, // 垂直略微拉伸
+          angle: tower.sprite.angle - 5,
+          duration: duration / 2,
+          yoyo: true,
+          ease: 'Quad.easeOut',
+          onComplete: () => {
+            tower.sprite.angle = 0;
+          }
+        });
+        break;
+
+      case 'code_warrior':
+        // 代码战士激光枪攻击动画
+        // 1. 快速瞄准动作
+        this.scene.tweens.add({
+          targets: tower.sprite,
+          scaleX: currentScaleX * 0.95,
+          scaleY: currentScaleY * 1.05,
+          duration: 50,
+          yoyo: false,
+          ease: 'Quad.easeOut',
+          onComplete: () => {
+            // 2. 发射时的闪光效果
+            // tower.sprite.setTint(0x00ff00); // 绿色激光闪光
+            
+            // 3. 后坐力效果
+            this.scene.tweens.add({
+              targets: tower.sprite,
+              x: tower.sprite.x + 5, // 略微后退
+              scaleX: currentScaleX * 0.9,
+              scaleY: currentScaleY * 1.1,
+              duration: 50,
+              yoyo: true,
+              ease: 'Bounce.easeOut',
+              onComplete: () => {
+                // 恢复原始状态
+                tower.sprite.clearTint();
+                tower.sprite.setScale(currentScaleX, currentScaleY);
+              }
+            });
+          }
+        });
+        break;
+
+      case 'ai_sniper':
+        // 瞄准效果（缩放 + 闪光）
+        this.scene.tweens.add({
+          targets: tower.sprite,
+          scaleX: currentScaleX * 0.95, // 水平略微压缩
+          scaleY: currentScaleY * 1.05, // 垂直略微拉伸
+          duration: duration / 2,
+          yoyo: true,
+          ease: 'Quad.easeOut',
+          onStart: () => {
+            // 添加闪光效果
+            tower.sprite.setTint(0xFFFFFF);
+          },
+          onComplete: () => {
+            tower.sprite.clearTint();
+          }
+        });
+        break;
+
+      case 'syntax_parser':
+        // 旋转扫描效果
+        this.scene.tweens.add({
+          targets: tower.sprite,
+          angle: '+=360',
+          duration: duration,
+          ease: 'Cubic.easeInOut'
+        });
+        break;
+
+      default:
+        // 默认攻击动画：简单的缩放效果
+        this.scene.tweens.add({
+          targets: tower.sprite,
+          scaleX: 1.1,
+          scaleY: 1.1,
+          duration: duration / 2,
+          yoyo: true,
+          ease: 'Quad.easeOut'
+        });
+    }
   }
 }

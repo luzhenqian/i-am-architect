@@ -16,8 +16,12 @@ export class MonsterManager {
       // 检查是否与防御塔碰撞
       const collidingTower = this.checkTowerCollision(monster);
 
+      // 当前缩放
       if (collidingTower) {
-        // 如果碰到防御塔，停止移动并攻击
+        // 如果碰到防御塔，停止移动动画
+        monster.sprite.setAngle(0);
+        monster.sprite.setScale(0.6); // 使用基础缩放比例
+
         if (!monster.attackingTower) {
           monster.attackingTower = collidingTower;
           monster.lastAttackTime = 0;
@@ -27,9 +31,17 @@ export class MonsterManager {
         // 即使在攻击时也要更新血条位置
         this.updateMonsterHealthBarPosition(monster);
       } else {
-        // 正常移动
+        // 正常移动时添加动画效果
         monster.sprite.y += monster.speed;
         monster.attackingTower = null;
+
+        // 添加摆动效果
+        const swingAngle = Math.sin(time / 100) * 0.3; // 每200ms完成一次摆动，最大角度为5度
+        monster.sprite.setAngle(swingAngle);
+
+        // 基于当前缩放比例添加呼吸效果
+        const breathScale = 0.3 * (1 + Math.sin(time / 300) * 0.05); // 每600ms完成一次呼吸,振幅为0.05
+        monster.sprite.setScale(breathScale);
 
         // 更新血条位置
         this.updateMonsterHealthBarPosition(monster);
