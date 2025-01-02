@@ -23,31 +23,24 @@ const Guide = ({ onBack }) => {
       <div className="relative min-h-full p-8">
         <button
           onClick={onBack}
-          className="mb-6 px-4 py-2 bg-green-500 hover:bg-green-600 
-                     rounded-lg transition-colors duration-200 
-                     flex items-center gap-2 fixed top-4 left-4 z-50"
+          className="fixed top-4 left-4 z-50 p-2 text-white hover:text-green-500 transition-colors"
         >
           <svg
-            className="w-5 h-5"
+            className="w-8 h-8"
+            viewBox="0 0 24 24"
             fill="none"
             stroke="currentColor"
-            viewBox="0 0 24 24"
+            strokeWidth="2"
           >
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              strokeWidth={2}
-              d="M10 19l-7-7m0 0l7-7m-7 7h18"
-            />
+            <path d="M15 19l-7-7 7-7" />
           </svg>
-          返回主菜单
         </button>
 
         <div className="max-w-6xl mx-auto pt-16">
           <h1 className="text-4xl font-bold mb-8 text-center">架构师手册</h1>
 
           {/* 标签切换 - 固定在顶部 */}
-          <div className="sticky top-0 z-40 py-4 bg-gray-900 mb-8">
+          <div className="sticky top-0 z-40 py-4 bg-gray-900 mb-8 border-b border-gray-800">
             <div className="flex justify-center">
               <button
                 onClick={() => setActiveTab('towers')}
