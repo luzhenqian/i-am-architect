@@ -20,7 +20,8 @@ export class MonsterManager {
       if (collidingTower) {
         // 如果碰到防御塔，停止移动动画
         monster.sprite.setAngle(0);
-        monster.sprite.setScale(0.6); // 使用基础缩放比例
+        // 恢复缩放
+        monster.sprite.setScale((this.scene.cellSize / monster.sprite.width) * 0.8);
 
         if (!monster.attackingTower) {
           monster.attackingTower = collidingTower;
@@ -143,27 +144,129 @@ export class MonsterManager {
 
   // 创建怪物攻击特效
   createMonsterAttackEffect(monster, tower) {
-    // 创建攻击线
-    const line = this.scene.add.graphics();
-    line.lineStyle(2, 0xff0000, 1);
-    line.beginPath();
-    line.moveTo(monster.sprite.x, monster.sprite.y);
-    line.lineTo(tower.sprite.x, tower.sprite.y);
-    line.strokePath();
+    // 创建能量球起始点
+    const energyBall = this.scene.add.circle(
+      monster.sprite.x,
+      monster.sprite.y,
+      10,
+      0xff0000,
+      1
+    );
 
-    // 创建攻击波
-    const impact = this.scene.add.circle(tower.sprite.x, tower.sprite.y, 10, 0xff0000, 0.7);
+    // 创建能量球的外发光
+    const outerGlow = this.scene.add.circle(
+      monster.sprite.x,
+      monster.sprite.y,
+      15,
+      0xff3333,
+      0.5
+    );
 
-    // 动画效果
+    // 创建能量球的内核
+    const core = this.scene.add.circle(
+      monster.sprite.x,
+      monster.sprite.y,
+      5,
+      0xffff00,
+      1
+    );
+
+    // 能量球发射动画
     this.scene.tweens.add({
-      targets: [line, impact],
-      alpha: 0,
-      scale: { value: 1.5, ease: 'Power2' },
-      duration: 200,
+      targets: [energyBall, outerGlow, core],
+      x: tower.sprite.x,
+      y: tower.sprite.y,
+      duration: 300,
+      ease: 'Cubic.easeOut',
       onComplete: () => {
-        line.destroy();
-        impact.destroy();
+        // 能量球到达目标后的爆炸效果
+        this.createImpactEffect(tower.sprite.x, tower.sprite.y);
+        energyBall.destroy();
+        outerGlow.destroy();
+        core.destroy();
       }
+    });
+
+    // 能量球飞行过程中的缩放动画
+    this.scene.tweens.add({
+      targets: [energyBall, outerGlow],
+      scale: { from: 1, to: 1.2 },
+      yoyo: true,
+      repeat: -1,
+      duration: 100
+    });
+  }
+
+  // 创建冲击效果
+  createImpactEffect(x, y) {
+    // 创建爆炸中心点
+    const impactCore = this.scene.add.circle(x, y, 5, 0xffffff, 1);
+    
+    // 创建多层冲击波
+    const shockwaves = [];
+    const colors = [0xff0000, 0xff3333, 0xff6666];
+    
+    for (let i = 0; i < 3; i++) {
+      const ring = this.scene.add.circle(x, y, 10, colors[i], 0.8);
+      shockwaves.push(ring);
+    }
+
+    // 创建能量碎片
+    const fragments = [];
+    const fragmentCount = 8;
+    for (let i = 0; i < fragmentCount; i++) {
+      const angle = (i / fragmentCount) * Math.PI * 2;
+      const fragment = this.scene.add.rectangle(x, y, 4, 12, 0xff3333);
+      fragment.setRotation(angle);
+      fragments.push(fragment);
+    }
+
+    // 爆炸核心动画
+    this.scene.tweens.add({
+      targets: impactCore,
+      scale: 2,
+      alpha: 0,
+      duration: 200,
+      ease: 'Power2',
+      onComplete: () => impactCore.destroy()
+    });
+
+    // 冲击波动画
+    shockwaves.forEach((ring, i) => {
+      this.scene.tweens.add({
+        targets: ring,
+        scale: 4,
+        alpha: 0,
+        duration: 400,
+        delay: i * 100,
+        ease: 'Power2',
+        onComplete: () => ring.destroy()
+      });
+    });
+
+    // 能量碎片动画
+    fragments.forEach((fragment, i) => {
+      const angle = (i / fragmentCount) * Math.PI * 2;
+      this.scene.tweens.add({
+        targets: fragment,
+        x: x + Math.cos(angle) * 50,
+        y: y + Math.sin(angle) * 50,
+        alpha: 0,
+        duration: 300,
+        ease: 'Power2',
+        onComplete: () => fragment.destroy()
+      });
+    });
+
+    // 添加闪光效果
+    const flash = this.scene.add.circle(x, y, 40, 0xffffff, 0.5);
+    this.scene.tweens.add({
+      targets: flash,
+      scale: 0.1,
+      alpha: 0,
+      duration: 200,
+      ease: 'Power2',
+      onComplete: () => flash.destroy()
     });
   }
 
