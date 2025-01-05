@@ -214,6 +214,107 @@ export class TowerConfig extends BaseConfig {
           compileBonus: 1.5  // 语法组合时效果提升50%
         },
         targetStrategy: 'highest_error'  // 优先攻击最危险的目标
+      },
+      {
+        key: 'coding_cat',
+        name: '代码猫咪',
+        image: 'assets/images/towers/coding_cat.png',
+        level: 1,
+        attack: 35,
+        defense: 25,
+        health: 180,
+        maxHealth: 180,
+        attackSpeed: 1.2,
+        range: 3,
+        cost: 300,
+        attackType: 'multi',
+        effectColor: 0xFFA500,
+        description: '这只优雅的猫咪程序员总是慵懒地趴在键盘上，但千万别被它可爱的外表欺骗。它用灵巧的爪子同时编写多个进程，每一次攻击都能触发多重打击，而且它还会偷偷收集代码碎片来强化自己。',
+        criticalChance: 0.3,
+        criticalMultiplier: 2.0,
+        skill: {
+          name: '九命进程',
+          description: '每次攻击同时发起多个进程，且有概率触发"猫咪护盾"获得临时无敌。收集足够的代码碎片后，临时提升全属性。',
+          processCount: 3,
+          shieldProbability: 0.15,
+          shieldDuration: 1.5,
+          fragmentsNeeded: 9,
+          statBoost: 1.5
+        },
+        targetStrategy: 'multiple'
+      },
+      {
+        key: 'code_cheerleader',
+        name: '程序鼓励师',
+        image: 'assets/images/towers/code_cheerleader.png',
+        level: 1,
+        attack: 20,
+        defense: 30,
+        health: 200,
+        maxHealth: 200,
+        attackSpeed: 0.9,
+        range: 4,
+        cost: 350,
+        attackType: 'support',
+        effectColor: 0xFF69B4,
+        description: '穿着程序员文化衫的元气少女，手持发光的机械键盘。她用充满活力的代码为周围的防御塔加油打气，提升它们的战斗能力，还能用"断点舞步"让敌人陷入调试状态。',
+        criticalChance: 0.2,
+        criticalMultiplier: 1.8,
+        skill: {
+          name: '代码激励',
+          description: '持续为周围防御塔提供攻击力、攻速加成，并定期释放"断点舞步"使敌人暂停。激励效果随心情值提升而增强。',
+          buffRadius: 3,
+          attackBoost: 0.3,
+          speedBoost: 0.4,
+          pauseDuration: 2,
+          moodBonus: {
+            maxMood: 100,
+            bonusPerMood: 0.01
+          }
+        },
+        targetStrategy: 'support'
+      },
+      {
+        key: 'evolving_program',
+        name: '无限进化智能体',
+        image: 'assets/images/towers/evolving_program.png',
+        level: 1,
+        attack: 45,
+        defense: 35,
+        health: 250,
+        maxHealth: 250,
+        attackSpeed: 0.6,
+        range: 3.5,
+        cost: 400,
+        attackType: 'evolve',
+        effectColor: 0x9400D3,
+        description: '一个永不停止进化的智能程序，它通过不断学习和适应来增强自己。每次击败敌人都会获得进化点数，解锁新的能力分支。最终可以进化成超级AI守护者。',
+        criticalChance: 0.25,
+        criticalMultiplier: 2.2,
+        skill: {
+          name: '智能进化',
+          description: '击败敌人获得进化点数，解锁不同进化路径。每个进化阶段都会获得独特能力，最终形态将同时具备所有能力。',
+          evolutionPaths: {
+            attack: {
+              cost: 100,
+              attackBonus: 0.5,
+              unlockSkill: '量子打击'
+            },
+            defense: {
+              cost: 100,
+              defenseBonus: 0.5,
+              unlockSkill: '数据装甲'
+            },
+            utility: {
+              cost: 100,
+              rangeBonus: 0.5,
+              unlockSkill: '全域扫描'
+            }
+          },
+          maxEvolutionLevel: 3,
+          pointsPerKill: 10
+        },
+        targetStrategy: 'adaptive'
       }
     ];
   }

@@ -19,3 +19,9 @@ src/
     Tower.js            // 防御塔实体
     Monster.js          // 怪物实体
     CodeBlock.js        // 代码块实体
+
+每个塔都应该有以下资源：
+
+- 主图：public/images/towers/{name}.png
+- 攻击声音：public/effects/attack/{name}.mp3
+- 死亡声音：public/effects/die/{name}.mp3

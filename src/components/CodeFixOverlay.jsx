@@ -45,8 +45,7 @@ class CodeFixOverlay {
   handleComplete(rewards = {}) {
     this.hide();
     // 应用奖励
-    // if (rewards.gold) this.scene.addGold(rewards.gold);
-    // if (rewards.score) this.scene.addScore(rewards.score);
+    if (rewards.gold) this.scene.updateGold(this.scene.gold + rewards.gold);
     this.scene.scene.resume();
     setTimeout(() => {
       this.scene.wave++;

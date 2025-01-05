@@ -4,6 +4,9 @@ import { Toaster, toast } from 'react-hot-toast';
 import api from '../api';
 
 const MainMenu = ({ onStartGame, onOpenGuide, onOpenSettings }) => {
+  // 添加 loading 状态
+  const [isLoading, setIsLoading] = useState(true);
+
   useEffect(() => {
     const autoLogin = async () => {
       // 显示优雅的加载 toast
@@ -45,6 +48,9 @@ const MainMenu = ({ onStartGame, onOpenGuide, onOpenSettings }) => {
             icon: '👋',
           }
         );
+        
+        // 登录成功后设置 loading 为 false
+        setIsLoading(false);
 
       } catch (error) {
         // 错误提示
@@ -63,6 +69,7 @@ const MainMenu = ({ onStartGame, onOpenGuide, onOpenSettings }) => {
           }
         );
         console.error('Auto login failed:', error);
+        setIsLoading(false); // 错误时也要设置 loading 为 false
       }
     };
 
@@ -102,46 +109,49 @@ const MainMenu = ({ onStartGame, onOpenGuide, onOpenSettings }) => {
             className="mb-40 w-72 drop-shadow-[0_0_4px_rgba(255,255,255,0.8)]"
           />
 
-          <div className="flex flex-col gap-6">
-            <button
-              onClick={onStartGame}
-              className={`
-                ${buttonBaseClass}
-                bg-gradient-to-r from-green-500 to-emerald-600
-                shadow-green-700/50
-                active:from-green-600 active:to-emerald-700
-                glow-green-500/30
-              `}
-            >
-              进入游戏
-            </button>
+          {/* 只在非加载状态下显示按钮 */}
+          {!isLoading && (
+            <div className="flex flex-col gap-6">
+              <button
+                onClick={onStartGame}
+                className={`
+                  ${buttonBaseClass}
+                  bg-gradient-to-r from-green-500 to-emerald-600
+                  shadow-green-700/50
+                  active:from-green-600 active:to-emerald-700
+                  glow-green-500/30
+                `}
+              >
+                进入游戏
+              </button>
 
-            <button
-              onClick={onOpenGuide}
-              className={`
-                ${buttonBaseClass}
-                bg-gradient-to-r from-blue-500 to-cyan-600
-                shadow-blue-700/50
-                active:from-blue-600 active:to-cyan-700
-                glow-blue-500/30
-              `}
-            >
-              游戏图鉴
-            </button>
+              <button
+                onClick={onOpenGuide}
+                className={`
+                  ${buttonBaseClass}
+                  bg-gradient-to-r from-blue-500 to-cyan-600
+                  shadow-blue-700/50
+                  active:from-blue-600 active:to-cyan-700
+                  glow-blue-500/30
+                `}
+              >
+                游戏图鉴
+              </button>
 
-            <button
-              onClick={onOpenSettings}
-              className={`
-                ${buttonBaseClass}
-                bg-gradient-to-r from-purple-500 to-fuchsia-600
-                shadow-purple-700/50
-                active:from-purple-600 active:to-fuchsia-700
-                glow-purple-500/30
-              `}
-            >
-              设置
-            </button>
-          </div>
+              <button
+                onClick={onOpenSettings}
+                className={`
+                  ${buttonBaseClass}
+                  bg-gradient-to-r from-purple-500 to-fuchsia-600
+                  shadow-purple-700/50
+                  active:from-purple-600 active:to-fuchsia-700
+                  glow-purple-500/30
+                `}
+              >
+                设置
+              </button>
+            </div>
+          )}
         </div>
       </div>
     </>
