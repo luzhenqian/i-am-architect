@@ -7,7 +7,8 @@ const http = axios.create({
   timeout: 10000,
   headers: {
     'Content-Type': 'application/json'
-  }
+  },
+  withCredentials: true
 });
 
 // 请求拦截器
@@ -38,7 +39,7 @@ http.interceptors.response.use(
 export const api = {
   // 生成题目
   generateQuestion: (data) => http.post('/questions/generate', data),
-  
+
   // 提交答案
   submitAnswer: (data) => http.post('/questions/submit', data)
 };
