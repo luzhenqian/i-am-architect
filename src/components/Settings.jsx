@@ -1,11 +1,19 @@
-import React, { useState } from 'react';
+import React from 'react';
+import { useActorRef, useSelector } from '@xstate/react';
+import { settingsMachine } from '../machines/settingsMachine';
 
 const Settings = ({ onBack }) => {
-  const [isSoundOn, setIsSoundOn] = useState(true);
-  const [language, setLanguage] = useState('zh');
-  const [isMusicOn, setIsMusicOn] = useState(true);
-  const [isChattyMode, setIsChattyMode] = useState(false);
-  const [isDevMode, setIsDevMode] = useState(true);
+  const actorRef = useActorRef(settingsMachine);
+  const context = useSelector(actorRef, snapshot => snapshot.context);
+  const send = actorRef.send;
+  
+  const { 
+    isSoundOn, 
+    isMusicOn, 
+    isChattyMode, 
+    isDevMode, 
+    language 
+  } = context;
 
   return (
     <div className="fixed inset-0 bg-gray-900 text-white overflow-y-auto">
@@ -29,11 +37,10 @@ const Settings = ({ onBack }) => {
           <h1 className="text-4xl font-bold mb-8 text-center">游戏设置</h1>
 
           <div className="space-y-8 bg-gray-800 p-6 rounded-xl">
-            {/* 声音设置 */}
             <div className="flex items-center justify-between">
               <label className="text-xl">游戏音效</label>
               <button
-                onClick={() => setIsSoundOn(!isSoundOn)}
+                onClick={() => send({ type: 'TOGGLE_SOUND' })}
                 className={`relative inline-flex h-8 w-14 items-center rounded-full transition-colors
                            ${isSoundOn ? 'bg-green-500' : 'bg-gray-600'}`}
               >
@@ -48,7 +55,7 @@ const Settings = ({ onBack }) => {
             <div className="flex items-center justify-between">
               <label className="text-xl">游戏音乐</label>
               <button
-                onClick={() => setIsMusicOn(!isMusicOn)}
+                onClick={() => send({ type: 'TOGGLE_MUSIC' })}
                 className={`relative inline-flex h-8 w-14 items-center rounded-full transition-colors
                            ${isMusicOn ? 'bg-green-500' : 'bg-gray-600'}`}
               >
@@ -63,7 +70,7 @@ const Settings = ({ onBack }) => {
             <div className="flex items-center justify-between">
               <label className="text-xl">话唠模式</label>
               <button
-                onClick={() => setIsChattyMode(!isChattyMode)}
+                onClick={() => send({ type: 'TOGGLE_CHATTY' })}
                 className={`relative inline-flex h-8 w-14 items-center rounded-full transition-colors
                            ${isChattyMode ? 'bg-green-500' : 'bg-gray-600'}`}
               >
@@ -78,7 +85,7 @@ const Settings = ({ onBack }) => {
             <div className="flex items-center justify-between">
               <label className="text-xl">程序员模式</label>
               <button
-                onClick={() => setIsDevMode(!isDevMode)}
+                onClick={() => send({ type: 'TOGGLE_DEV' })}
                 className={`relative inline-flex h-8 w-14 items-center rounded-full transition-colors
                            ${isDevMode ? 'bg-green-500' : 'bg-gray-600'}`}
               >
@@ -94,7 +101,7 @@ const Settings = ({ onBack }) => {
               <label className="text-xl">游戏语言</label>
               <select
                 value={language}
-                onChange={(e) => setLanguage(e.target.value)}
+                onChange={(e) => send({ type: 'CHANGE_LANGUAGE', value: e.target.value })}
                 className="bg-gray-700 text-white px-4 py-2 rounded-lg outline-none focus:ring-2 focus:ring-blue-500"
               >
                 <option value="zh">简体中文</option>
