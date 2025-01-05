@@ -26,7 +26,9 @@ const App = () => {
 
   return (
     <div className="min-h-screen bg-gray-900">
-      {/* <CodeFixScreen /> */}
+      {/* <CodeFixScreen
+        gameState={{ difficulty: 1 }}
+      /> */}
 
       {currentScreen === 'menu' && (
         <MainMenu 
