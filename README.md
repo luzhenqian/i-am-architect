@@ -1,4 +1,4 @@
-// 主要的场景类结构
+```
 src/
   scenes/
     GameScene.js         // 主场景类,负责组织和协调其他模块
@@ -19,6 +19,7 @@ src/
     Tower.js            // 防御塔实体
     Monster.js          // 怪物实体
     CodeBlock.js        // 代码块实体
+```
 
 每个塔都应该有以下资源：
 
