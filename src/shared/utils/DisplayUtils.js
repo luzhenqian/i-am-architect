@@ -5,7 +5,7 @@ export class DisplayUtils {
     const border = scene.add.rectangle(x, y, width + borderWidth, height + borderWidth, 0x000000, borderWidth);
     border.setOrigin(0.5, 0.5);
 
-    const background = scene.add.rectangle(x, y, width, height, 0x000000);
+    const background = scene.add.rectangle(x, y, width, height, 0x999999);
     background.setOrigin(0.5, 0.5);
 
     const bar = scene.add.rectangle(

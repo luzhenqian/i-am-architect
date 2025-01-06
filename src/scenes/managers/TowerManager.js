@@ -643,11 +643,11 @@ export class TowerManager {
   updateTowerHealthBarPosition(tower) {
     if (tower.healthBar) {
       tower.healthBar.background.x = tower.sprite.x;
-      tower.healthBar.background.y = tower.sprite.y - this.cellSize / 2;
+      tower.healthBar.background.y = tower.sprite.y - this.scene.cellSize / 2;
       tower.healthBar.bar.x = tower.sprite.x - tower.healthBar.background.width / 2;
       tower.healthBar.bar.y = tower.sprite.y - this.scene.cellSize / 2;
-      tower.healthBar.border.x = tower.sprite.x + scaleToDPR(2);
-      tower.healthBar.border.y = tower.sprite.y - this.cellSize / 2 + scaleToDPR(2);
+      tower.healthBar.border.x = tower.sprite.x;
+      tower.healthBar.border.y = tower.sprite.y - this.scene.cellSize / 2;
     }
 
 
@@ -1264,7 +1264,7 @@ export class TowerManager {
           onComplete: () => {
             // 2. 发射时的闪光效果
             // tower.sprite.setTint(0x00ff00); // 绿色激光闪光
-            
+
             // 3. 后坐力效果
             this.scene.tweens.add({
               targets: tower.sprite,

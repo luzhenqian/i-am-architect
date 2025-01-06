@@ -1618,7 +1618,7 @@ export default class GameScene extends Phaser.Scene {
       col >= 0 && col < this.gridSize.cols;
   }
 
-  // 更新血条的方法
+  // 更新血条
   updateHealthBar(healthBar, percentage) {
     if (healthBar && healthBar.bar) {
       healthBar.bar.scaleX = Math.max(0, percentage);
@@ -1710,6 +1710,7 @@ export default class GameScene extends Phaser.Scene {
         emitter.destroy();
         monster.healthBar.background.destroy();
         monster.healthBar.bar.destroy();
+        monster.healthBar.border.destroy();
         monster.sprite.destroy();
 
         // 给予奖励
