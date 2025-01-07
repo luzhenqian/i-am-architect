@@ -227,13 +227,13 @@ const CodeFixScreen = ({ gameState, onComplete, onSkip }) => {
             修复代码以继续游戏
           </div>
           <motion.button
-            whileHover={{ scale: isSubmitting ? 1 : 1.02 }}
-            whileTap={{ scale: isSubmitting ? 1 : 0.98 }}
+            whileHover={{ scale: (isSubmitting || isLoading) ? 1 : 1.02 }}
+            whileTap={{ scale: (isSubmitting || isLoading) ? 1 : 0.98 }}
             onClick={handleSubmit}
-            disabled={isSubmitting}
-            className={`flex items-center gap-2 px-6 py-3 rounded-lg font-medium transition-colors ${isSubmitting
-              ? 'bg-blue-500/50 cursor-not-allowed'
-              : 'bg-blue-500 hover:bg-blue-600'
+            disabled={isSubmitting || isLoading || !Boolean(editorRef.current)}
+            className={`flex items-center gap-2 px-6 py-3 rounded-lg font-medium transition-colors ${(isSubmitting || isLoading || !Boolean(editorRef.current))
+                ? 'bg-blue-500/50 cursor-not-allowed'
+                : 'bg-blue-500 hover:bg-blue-600'
               } text-white`}
           >
             {isSubmitting ? (
