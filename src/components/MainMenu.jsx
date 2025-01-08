@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 
-const MainMenu = ({ onStartGame, onOpenGuide, onOpenSettings, isLoading }) => {
+const MainMenu = ({ onStartGame, onOpenGuide, onOpenSettings, onOpenLeaderboard, isLoading }) => {
   const buttonBaseClass = `
     px-6 py-4 text-lg text-white font-medium
     rounded-xl min-w-[160px]
@@ -47,6 +47,19 @@ const MainMenu = ({ onStartGame, onOpenGuide, onOpenSettings, isLoading }) => {
                 `}
               >
                 进入游戏
+              </button>
+
+              <button
+                onClick={onOpenLeaderboard}
+                className={`
+                  ${buttonBaseClass}
+                  bg-gradient-to-r from-yellow-500 to-amber-600
+                  shadow-yellow-700/50
+                  active:from-yellow-600 active:to-amber-700
+                  glow-yellow-500/30
+                `}
+              >
+                排行榜
               </button>
 
               <button

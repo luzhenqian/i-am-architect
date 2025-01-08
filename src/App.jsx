@@ -3,6 +3,7 @@ import MainMenu from './components/MainMenu';
 import Game from './components/Game';
 import Guide from './components/Guide';
 import Settings from './components/Settings';
+import Leaderboard from './components/Leaderboard';
 import CodeFixScreen from './components/CodeFixScreen';
 import * as FingerprintJS from '@fingerprintjs/fingerprintjs';
 import { Toaster, toast } from 'react-hot-toast';
@@ -97,6 +98,10 @@ const App = () => {
     setCurrentScreen('settings');
   };
 
+  const handleOpenLeaderboard = () => {
+    setCurrentScreen('leaderboard');
+  };
+
   return (
     <div className="min-h-screen bg-gray-900">
       {/* <CodeFixScreen
@@ -109,6 +114,7 @@ const App = () => {
           onStartGame={handleStartGame}
           onOpenGuide={handleOpenGuide}
           onOpenSettings={handleOpenSettings}
+          onOpenLeaderboard={handleOpenLeaderboard}
           isLoading={isLoading}
         />
       )}
@@ -120,6 +126,9 @@ const App = () => {
       )}
       {currentScreen === 'settings' && (
         <Settings onBack={handleBackToMenu} />
+      )}
+      {currentScreen === 'leaderboard' && (
+        <Leaderboard onBack={handleBackToMenu} />
       )}
     </div>
   );
